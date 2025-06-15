@@ -1,18 +1,73 @@
-# Getting Started with Create React App
+# Meta Agency React Application
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This project is a React application for the Meta Agency, featuring a public-facing website and a protected admin dashboard. It includes features like light/dark mode, routing, and user authentication.
 
-## Available Scripts
+## Getting Started
+
+Follow these steps to set up and run the project locally.
+
+### Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+*   **Node.js**: It is recommended to use the latest LTS version. You can download it from [nodejs.org](https://nodejs.org/).
+*   **npm** (Node Package Manager): npm is distributed with Node.js.
+
+### Installation
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/haziqdafren/metaAgency.git
+    ```
+2.  **Navigate to the project directory:**
+    ```bash
+    cd metaAgency
+    ```
+3.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
+
+### Environment Variables
+
+This project uses Supabase for its backend. You need to create a `.env` file in the root of the project to store your Supabase credentials.
+
+1.  Create a file named `.env` in the root directory of your project.
+2.  Add the following lines to the `.env` file, replacing the placeholder values with your actual Supabase URL and API Key:
+
+    ```
+    VITE_SUPABASE_URL="YOUR_SUPABASE_URL"
+    VITE_SUPABASE_ANON_KEY="YOUR_SUPABASE_ANON_KEY"
+    ```
+
+    *   You can find your Supabase URL and `anon` key in your Supabase project settings under `API`.
+
+### Running the Application
 
 In the project directory, you can run:
 
-### `npm start`
+### `npm run dev`
 
 Runs the app in the development mode.\
 Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
 The page will reload when you make changes.\
 You may also see any lint errors in the console.
+
+## Admin Access
+
+For testing purposes, a dummy admin user is available:
+
+*   **Email:** `admin@metaagency.id`
+*   **Password:** `admin123`
+
+You can log in via the Login page and will be redirected to the admin dashboard.
+
+## Features
+
+*   **Public Pages:** About Us, Services, Login, Join, Contact, Articles.
+*   **Admin Dashboard:** Protected route with a dedicated sidebar layout.
+*   **Light/Dark Mode:** Toggle theme for a modern user experience, persistent via local storage.
 
 ### `npm test`
 
