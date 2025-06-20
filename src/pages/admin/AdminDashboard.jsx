@@ -1,314 +1,292 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Upload, Book, Users, TrendingUp, UserCheck, Gem, DollarSign, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Line, Bar } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, ArcElement } from 'chart.js';
-import useThemeStore from '../../store/themeStore';
+import { Line } from 'react-chartjs-2';
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
 import { supabase } from '../../lib/supabase';
+import Button from '../../components/common/Button';
+import useAuthStore from '../../store/authStore';
+import useThemeStore from '../../store/themeStore';
 
-// Register Chart.js components
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, ArcElement);
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
-const pageVariants = {
-  initial: { opacity: 0, x: 40 },
-  animate: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: -40 },
+const cardVariants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: (i) => ({ opacity: 1, y: 0, transition: { delay: i * 0.1 } }),
 };
 
 const AdminDashboard = () => {
+  const { profile } = useAuthStore();
   const { theme } = useThemeStore();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [stats, setStats] = useState({
-    totalTalents: 0,
-    activeToday: 0,
-    pendingRegistrations: 0,
-    monthlyRevenue: 0
+    totalCreators: 0,
+    activeCreators: 0,
+    totalDiamonds: 0,
+    totalBonuses: 0,
   });
-  const [recentActivities, setRecentActivities] = useState([]);
-  const [revenueData, setRevenueData] = useState({
-    labels: [],
-    datasets: [{
-      label: 'Monthly Revenue (Billion IDR)',
-      data: [],
-      borderColor: '#00bcd4',
-      backgroundColor: 'rgba(0, 188, 212, 0.2)',
-      fill: true,
-      tension: 0.3,
-    }]
-  });
-  const [topPerformersData, setTopPerformersData] = useState({
-    labels: [],
-    datasets: [{
-      label: 'Diamonds Earned',
-      data: [],
-      backgroundColor: ['#00bcd4', '#1e88e5', '#ffc107', '#4caf50', '#f44336'],
-    }]
-  });
+  const [diamondsTrend, setDiamondsTrend] = useState({ labels: [], data: [] });
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
     const fetchDashboardData = async () => {
+    setLoading(true);
       try {
-        // Fetch total talents
-        const { count: totalTalents, error: talentsError } = await supabase
-          .from('talent_profiles')
+      // Total creators & active creators
+      const { count: totalCreators } = await supabase
+        .from('creators')
           .select('*', { count: 'exact', head: true });
-
-        if (talentsError) throw talentsError;
-
-        // Fetch pending registrations
-        const { count: pendingRegistrations, error: registrationsError } = await supabase
-          .from('registrations')
+      const { count: activeCreators } = await supabase
+        .from('creators')
           .select('*', { count: 'exact', head: true })
-          .eq('status', 'pending');
-
-        if (registrationsError) throw registrationsError;
-
-        // Fetch monthly revenue from performance reports
-        const { data: performanceReports, error: reportsError } = await supabase
-          .from('performance_reports')
-          .select('total_diamonds')
-          .order('created_at', { ascending: false })
-          .limit(1);
-
-        if (reportsError) throw reportsError;
-
-        const monthlyRevenue = performanceReports[0]?.total_diamonds || 0;
-
-        // Fetch top performers
-        const { data: topPerformers, error: performersError } = await supabase
-          .from('talent_performance')
-          .select(`
-            diamond_earned,
-            talent:talent_profiles(
-              username_tiktok
-            )
-          `)
-          .order('diamond_earned', { ascending: false })
+        .eq('status', 'active');
+      // Diamonds trend (last 6 months)
+      const now = new Date();
+      const months = Array.from({ length: 6 }, (_, i) => {
+        const d = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+        return { year: d.getFullYear(), month: d.getMonth() + 1 };
+      });
+      let trendLabels = [];
+      let trendData = [];
+      for (const m of months) {
+        const { data, error } = await supabase
+          .from('creator_performance')
+          .select('diamonds')
+          .eq('period_year', m.year)
+          .eq('period_month', m.month);
+        const sum = data ? data.reduce((acc, row) => acc + (row.diamonds || 0), 0) : 0;
+        trendLabels.push(`${m.month}/${m.year}`);
+        trendData.push(sum);
+      }
+      // Total diamonds (latest month)
+      const latestDiamonds = trendData[trendData.length - 1] || 0;
+      // Total bonuses (latest month)
+      const { data: bonusRows } = await supabase
+        .from('bonus_calculations')
+        .select('bonus_amount_idr, month, year');
+      let totalBonuses = 0;
+      if (bonusRows && bonusRows.length > 0) {
+        const latest = months[months.length - 1];
+        totalBonuses = bonusRows
+          .filter(b => b.month === latest.month && b.year === latest.year)
+          .reduce((acc, b) => acc + (b.bonus_amount_idr || 0), 0);
+      }
+      // Recent activity (simulate with last 5 username changes)
+      const { data: usernameChanges } = await supabase
+        .from('username_history')
+        .select('old_username, new_username, changed_at')
+        .order('changed_at', { ascending: false })
           .limit(5);
-
-        if (performersError) throw performersError;
-
-        // Fetch revenue data for the last 12 months
-        const { data: monthlyRevenueData, error: revenueError } = await supabase
-          .from('performance_reports')
-          .select('month, year, total_diamonds')
-          .order('year', { ascending: true })
-          .order('month', { ascending: true })
-          .limit(12);
-
-        if (revenueError) throw revenueError;
-
-        // Process revenue data for chart
-        const labels = monthlyRevenueData.map(report => 
-          new Date(report.year, report.month - 1).toLocaleDateString('en-US', { month: 'short' })
-        );
-        const data = monthlyRevenueData.map(report => report.total_diamonds);
-
-        // Fetch recent activities
-        const { data: activities, error: activitiesError } = await supabase
-          .from('activity_logs')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(5);
-
-        if (activitiesError) throw activitiesError;
-
         setStats({
-          totalTalents,
-          activeToday: 0, // This would need a separate query to get active users today
-          pendingRegistrations,
-          monthlyRevenue
-        });
-
-        setTopPerformersData({
-          labels: topPerformers.map(p => p.talent.username_tiktok),
-          datasets: [{
-            label: 'Diamonds Earned',
-            data: topPerformers.map(p => p.diamond_earned),
-            backgroundColor: ['#00bcd4', '#1e88e5', '#ffc107', '#4caf50', '#f44336'],
-          }]
-        });
-
-        setRevenueData({
-          labels,
-          datasets: [{
-            label: 'Monthly Revenue (Billion IDR)',
-            data,
-            borderColor: '#00bcd4',
-            backgroundColor: 'rgba(0, 188, 212, 0.2)',
-            fill: true,
-            tension: 0.3,
-          }]
-        });
-
-        setRecentActivities(activities.map(activity => ({
-          id: activity.id,
-          type: activity.type,
-          description: activity.description,
-          time: new Date(activity.created_at).toLocaleDateString('en-US', { 
-            hour: 'numeric',
-            minute: 'numeric',
-            hour12: true
-          })
-        })));
-
+        totalCreators: totalCreators || 0,
+        activeCreators: activeCreators || 0,
+        totalDiamonds: latestDiamonds,
+        totalBonuses,
+      });
+      setDiamondsTrend({ labels: trendLabels, data: trendData });
+      setRecentActivity(
+        (usernameChanges || []).map(change => ({
+          type: 'Username Change',
+          message: `${change.old_username} → ${change.new_username}`,
+          date: new Date(change.changed_at).toLocaleDateString('id-ID'),
+        }))
+      );
       } catch (err) {
-        setError(err.message);
+      // handle error
       } finally {
         setLoading(false);
       }
     };
 
-    fetchDashboardData();
-  }, []);
-
-  const revenueOptions = {
-    responsive: true,
-    plugins: {
-      legend: { position: 'top', labels: { color: theme === 'dark' ? '#cbd5e1' : '#333' } },
-      title: { display: true, text: 'Monthly Revenue Trends', color: theme === 'dark' ? '#ffffff' : '#000000' },
-    },
-    scales: {
-      x: { ticks: { color: theme === 'dark' ? '#94a3b8' : '#666' }, grid: { color: theme === 'dark' ? '#334155' : '#e2e8f0' } },
-      y: { ticks: { color: theme === 'dark' ? '#94a3b8' : '#666' }, grid: { color: theme === 'dark' ? '#334155' : '#e2e8f0' } },
-    },
-  };
-
-  const topPerformersOptions = {
-    responsive: true,
-    plugins: {
-      legend: { position: 'top', labels: { color: theme === 'dark' ? '#cbd5e1' : '#333' } },
-      title: { display: true, text: 'Top Performing Talents (Diamonds)', color: theme === 'dark' ? '#ffffff' : '#000000' },
-    },
-    scales: {
-      x: { ticks: { color: theme === 'dark' ? '#94a3b8' : '#666' }, grid: { color: theme === 'dark' ? '#334155' : '#e2e8f0' } },
-      y: { ticks: { color: theme === 'dark' ? '#94a3b8' : '#666' }, grid: { color: theme === 'dark' ? '#334155' : '#e2e8f0' } },
-    },
-  };
-
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount);
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-meta-blue">Loading...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-red-500">Error: {error}</div>
-      </div>
-    );
-  }
-
   return (
-    <motion.div
-      className={`p-6 flex-1 overflow-y-auto transition-colors duration-500 ${theme === 'dark' ? 'bg-gradient-to-br from-meta-black via-meta-gray-900/80 to-meta-black/90' : 'bg-gradient-to-br from-white via-meta-gray-100 to-white'}`}
-      variants={pageVariants}
-      initial="initial"
-      animate="animate"
-      exit="exit"
-    >
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          className={`${theme === 'dark' ? 'bg-meta-gray-900/80 border-meta-gray-800 text-white' : 'bg-white border-meta-gray-200 text-meta-black'} rounded-xl p-6 shadow flex flex-col items-start border transition-colors duration-500`}
-        >
-          <span className={`${theme === 'dark' ? 'text-meta-gray-400' : 'text-meta-gray-500'} mb-1 text-sm`}>Total Talents</span>
-          <span className="text-3xl font-bold">{stats.totalTalents}</span>
-        </motion.div>
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          className={`${theme === 'dark' ? 'bg-meta-gray-900/80 border-meta-gray-800 text-white' : 'bg-white border-meta-gray-200 text-meta-black'} rounded-xl p-6 shadow flex flex-col items-start border transition-colors duration-500`}
-        >
-          <span className={`${theme === 'dark' ? 'text-meta-gray-400' : 'text-meta-gray-500'} mb-1 text-sm`}>Active Today</span>
-          <span className="text-3xl font-bold">{stats.activeToday}</span>
-        </motion.div>
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          className={`${theme === 'dark' ? 'bg-meta-gray-900/80 border-meta-gray-800 text-white' : 'bg-white border-meta-gray-200 text-meta-black'} rounded-xl p-6 shadow flex flex-col items-start border transition-colors duration-500`}
-        >
-          <span className={`${theme === 'dark' ? 'text-meta-gray-400' : 'text-meta-gray-500'} mb-1 text-sm`}>Pending Registrations</span>
-          <span className="text-3xl font-bold">{stats.pendingRegistrations}</span>
-        </motion.div>
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          className={`${theme === 'dark' ? 'bg-meta-gray-900/80 border-meta-gray-800 text-white' : 'bg-white border-meta-gray-200 text-meta-black'} rounded-xl p-6 shadow flex flex-col items-start border transition-colors duration-500`}
-        >
-          <span className={`${theme === 'dark' ? 'text-meta-gray-400' : 'text-meta-gray-500'} mb-1 text-sm`}>Monthly Revenue</span>
-          <span className="text-3xl font-bold">{formatCurrency(stats.monthlyRevenue)}</span>
-        </motion.div>
-      </div>
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          className={`${theme === 'dark' ? 'bg-meta-gray-900/80 border-meta-gray-800' : 'bg-white border-meta-gray-200'} rounded-xl p-6 shadow border transition-colors duration-500`}
-        >
-          <Line data={revenueData} options={revenueOptions} height={220} />
-        </motion.div>
-        <motion.div
-          whileHover={{ scale: 1.02 }}
-          className={`${theme === 'dark' ? 'bg-meta-gray-900/80 border-meta-gray-800' : 'bg-white border-meta-gray-200'} rounded-xl p-6 shadow border transition-colors duration-500`}
-        >
-          <Bar data={topPerformersData} options={topPerformersOptions} height={220} />
-        </motion.div>
-      </div>
-
-      {/* Recent Activities */}
-      <motion.div
-        whileHover={{ scale: 1.02 }}
-        className={`${theme === 'dark' ? 'bg-meta-gray-900/80 border-meta-gray-800' : 'bg-white border-meta-gray-200'} rounded-xl p-6 shadow border transition-colors duration-500 mb-8`}
+    <div className={`p-6 max-w-7xl mx-auto transition-colors duration-500 ${theme === 'dark' ? 'bg-meta-black text-white' : 'bg-gray-50 text-meta-black'}`}>
+      <motion.h1
+        className="text-3xl font-bold mb-2 text-meta-blue"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
       >
-        <h2 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-meta-black'}`}>Recent Activities</h2>
-        <ul className="divide-y divide-meta-gray-200 dark:divide-meta-gray-800">
-          {recentActivities.map(activity => (
+        Welcome{profile?.name ? `, ${profile.name}` : ''}!
+      </motion.h1>
+      <motion.p
+        className="mb-8 text-lg text-meta-gray-600"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.3, duration: 0.6 }}
+      >
+        Here's your agency's latest performance at a glance.
+      </motion.p>
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+        {[
+          {
+            label: 'Total Creators',
+            value: stats.totalCreators,
+            icon: <UserCheck className="w-7 h-7 text-meta-blue" />, color: theme === 'dark' ? 'bg-meta-gray-900 text-white border border-meta-gray-800' : 'bg-blue-50 text-meta-black',
+          },
+          {
+            label: 'Active Creators',
+            value: stats.activeCreators,
+            icon: <Users className="w-7 h-7 text-green-600" />, color: theme === 'dark' ? 'bg-meta-gray-900 text-white border border-meta-gray-800' : 'bg-green-50 text-meta-black',
+          },
+          {
+            label: 'Total Diamonds',
+            value: stats.totalDiamonds,
+            icon: <Gem className="w-7 h-7 text-purple-600" />, color: theme === 'dark' ? 'bg-meta-gray-900 text-white border border-meta-gray-800' : 'bg-purple-50 text-meta-black',
+          },
+          {
+            label: 'Total Bonuses',
+            value: `Rp ${stats.totalBonuses.toLocaleString('id-ID')}`,
+            icon: <DollarSign className="w-7 h-7 text-yellow-500" />, color: theme === 'dark' ? 'bg-meta-gray-900 text-white border border-meta-gray-800' : 'bg-yellow-50 text-meta-black',
+          },
+        ].map((card, i) => (
+        <motion.div
+            key={card.label}
+            className={`rounded-xl shadow p-6 flex flex-col items-center ${card.color}`}
+            variants={cardVariants}
+            initial="hidden"
+            animate="visible"
+            custom={i}
+            whileHover={{ scale: 1.05 }}
+          >
+            {card.icon}
+        <motion.div
+              className="text-3xl font-bold mt-2"
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2 + i * 0.1, type: 'spring', stiffness: 200 }}
+            >
+              {card.value}
+        </motion.div>
+            <div className="text-sm text-meta-gray-600 mt-1">{card.label}</div>
+        </motion.div>
+        ))}
+      </div>
+      {/* Diamonds Trend Chart */}
+        <motion.div
+        className={`rounded-xl shadow p-6 mb-10 transition-colors duration-500 ${theme === 'dark' ? 'bg-meta-gray-900 border border-meta-gray-800' : 'bg-white border border-gray-200'}`}
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+      >
+        <div className="flex items-center mb-4">
+          <TrendingUp className="w-6 h-6 text-meta-blue mr-2" />
+          <span className="font-semibold text-lg">Diamonds Trend (Last 6 Months)</span>
+        </div>
+        <Line
+          data={{
+            labels: diamondsTrend.labels,
+            datasets: [
+              {
+                label: 'Diamonds',
+                data: diamondsTrend.data,
+                borderColor: theme === 'dark' ? '#6366f1' : '#6366f1',
+                backgroundColor: theme === 'dark' ? 'rgba(99,102,241,0.15)' : 'rgba(99,102,241,0.1)',
+                tension: 0.4,
+                fill: true,
+                pointRadius: 4,
+                pointHoverRadius: 7,
+              },
+            ],
+          }}
+          options={{
+            responsive: true,
+            plugins: {
+              legend: { display: false },
+              tooltip: { enabled: true },
+            },
+            scales: {
+              x: { grid: { display: false }, ticks: { color: theme === 'dark' ? '#cbd5e1' : '#666' } },
+              y: { grid: { color: theme === 'dark' ? '#334155' : '#e0e7ef' }, beginAtZero: true, ticks: { color: theme === 'dark' ? '#cbd5e1' : '#666' } },
+            },
+            animation: {
+              duration: 1200,
+              easing: 'easeInOutQuart',
+            },
+          }}
+          height={120}
+        />
+        </motion.div>
+      {/* Recent Activity */}
+      <motion.div
+        className={`rounded-xl shadow p-6 mb-10 transition-colors duration-500 ${theme === 'dark' ? 'bg-meta-gray-900 border border-meta-gray-800' : 'bg-white border border-gray-200'}`}
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+      >
+        <div className="flex items-center mb-4">
+          <Activity className="w-6 h-6 text-meta-blue mr-2" />
+          <span className="font-semibold text-lg">Recent Activity</span>
+        </div>
+        <ul className="divide-y divide-meta-gray-100">
+          <AnimatePresence>
+            {recentActivity.length === 0 && (
+              <motion.li className="py-2 text-meta-gray-400">No recent activity.</motion.li>
+            )}
+            {recentActivity.map((item, i) => (
             <motion.li
-              key={activity.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+                key={i}
               className="py-2 flex items-center gap-3"
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 30 }}
+                transition={{ delay: 0.1 * i }}
             >
               <span className="inline-block w-2 h-2 rounded-full bg-meta-blue"></span>
-              <span className="flex-1">{activity.description}</span>
-              <span className="text-xs text-meta-gray-400">{activity.time}</span>
+                <span className="flex-1">{item.message}</span>
+                <span className="text-xs text-meta-gray-400">{item.date}</span>
             </motion.li>
           ))}
+          </AnimatePresence>
         </ul>
       </motion.div>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="bg-meta-blue text-white rounded-lg py-4 px-6 font-semibold shadow hover:bg-meta-blue/90 transition"
-        >
-          Add New Talent
-        </motion.button>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="bg-meta-blue text-white rounded-lg py-4 px-6 font-semibold shadow hover:bg-meta-blue/90 transition"
-        >
-          Upload Performance
-        </motion.button>
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="bg-meta-blue text-white rounded-lg py-4 px-6 font-semibold shadow hover:bg-meta-blue/90 transition"
-        >
-          Export Data
-        </motion.button>
+      {/* Feature Shortcuts */}
+      <motion.div
+        className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8"
+        initial="hidden"
+        animate="visible"
+        variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
+      >
+        {[
+          {
+            to: '/admin/upload',
+            icon: <Upload className="w-10 h-10 mb-2 text-meta-blue" />,
+            label: 'Upload Performance',
+            color: theme === 'dark' ? 'bg-meta-gray-900 text-white border border-meta-gray-800' : 'bg-blue-50 text-meta-black',
+          },
+          {
+            to: '/admin/bonus',
+            icon: <Book className="w-10 h-10 mb-2 text-purple-700" />,
+            label: 'Bonus Calculator',
+            color: theme === 'dark' ? 'bg-meta-gray-900 text-white border border-meta-gray-800' : 'bg-purple-50 text-meta-black',
+          },
+          {
+            to: '/admin/talents',
+            icon: <Users className="w-10 h-10 mb-2 text-green-700" />,
+            label: 'Talent Management',
+            color: theme === 'dark' ? 'bg-meta-gray-900 text-white border border-meta-gray-800' : 'bg-green-50 text-meta-black',
+          },
+        ].map((card, i) => (
+          <motion.div
+            key={card.label}
+            className={`flex flex-col items-center p-6 rounded-lg shadow cursor-pointer hover:scale-105 transition ${card.color}`}
+            whileHover={{ scale: 1.08, boxShadow: '0 8px 32px rgba(99,102,241,0.15)' }}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 + i * 0.1 }}
+          >
+            <Link to={card.to} className="flex flex-col items-center">
+              {card.icon}
+              <span className="font-semibold text-lg mt-2">{card.label}</span>
+            </Link>
+          </motion.div>
+        ))}
+      </motion.div>
       </div>
-    </motion.div>
   );
 };
 

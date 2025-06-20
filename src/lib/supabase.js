@@ -3,7 +3,21 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'YOUR_SUPABASE_URL';
 const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Enable session persistence and auto-refresh
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storage: localStorage,
+  },
+});
+
+// Listen for auth state changes and update the store if needed
+supabase.auth.onAuthStateChange((event, session) => {
+  // Optionally, you can trigger a global event or update zustand store here
+  // For example: window.dispatchEvent(new CustomEvent('supabase-auth', { detail: { event, session } }));
+});
 
 // Auth helpers
 export const signUp = async (email, password, metadata = {}) => {

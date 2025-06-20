@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
+import useThemeStore from '../../store/themeStore';
 
 const Button = ({
   children,
@@ -11,15 +12,23 @@ const Button = ({
   fullWidth = false,
   icon: Icon,
   className = '',
+  color = '', // optional accent color
   ...props
 }) => {
+  const { theme } = useThemeStore();
   const baseClasses = 'inline-flex items-center justify-center rounded-lg font-semibold transition-all duration-200';
   
   const variantClasses = {
     primary: 'bg-gradient-to-r from-meta-blue to-cyan-500 text-white hover:opacity-90',
-    secondary: 'bg-white/10 text-white backdrop-blur-sm hover:bg-white/20',
-    outline: 'border border-meta-gray-800 text-white hover:bg-meta-gray-800',
-    ghost: 'text-white hover:bg-white/10',
+    secondary: theme === 'dark'
+      ? 'bg-white/10 text-white backdrop-blur-sm hover:bg-white/20'
+      : 'bg-gray-100 text-meta-black hover:bg-gray-200',
+    outline: theme === 'dark'
+      ? 'border border-meta-gray-800 text-white hover:bg-meta-gray-800'
+      : 'border border-meta-gray-300 text-meta-black hover:bg-gray-100',
+    ghost: theme === 'dark'
+      ? 'text-white hover:bg-white/10'
+      : 'text-meta-black hover:bg-gray-100',
   };
 
   const sizeClasses = {
@@ -29,8 +38,9 @@ const Button = ({
   };
 
   const widthClass = fullWidth ? 'w-full' : '';
+  const colorClass = color ? color : '';
 
-  const classes = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${widthClass} ${className}`;
+  const classes = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${widthClass} ${colorClass} ${className}`;
 
   return (
     <motion.button

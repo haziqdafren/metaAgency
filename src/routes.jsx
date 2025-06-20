@@ -22,17 +22,17 @@ import Disclaimer from './pages/public/Disclaimer';
 import LoginPage from './pages/auth/LoginPage';
 import NotFound from './pages/public/NotFound';
 import BonusContent from './pages/public/BonusContent';
+import ArticleDetail from './pages/public/ArticleDetail';
 
 // Protected Pages
 import Dashboard from './pages/talent/Dashboard';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminSidebar from './components/admin/AdminSidebar';
 import TalentManagement from './pages/admin/TalentManagement';
-import TalentSearch from './pages/admin/TalentSearch';
 import PerformanceUpload from './pages/admin/PerformanceUpload';
-import Registrations from './pages/admin/Registrations';
-import Articles from './pages/admin/Articles';
-import Settings from './pages/admin/Settings';
+import BonusCalculator from './pages/admin/BonusCalculator';
+import AdminArticles from './pages/admin/AdminArticles';
+import TalentSearch from './pages/admin/TalentSearch';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -68,17 +68,11 @@ function AdminLayout({ children }) {
       case '/admin':
         return 'Dashboard';
       case '/admin/talents':
-        return 'Talent Database';
-      case '/admin/search':
-        return 'Search Talent';
+        return 'Talent Management';
       case '/admin/upload':
         return 'Upload Performance';
-      case '/admin/registrations':
-        return 'Registrations';
-      case '/admin/articles':
-        return 'Articles';
-      case '/admin/settings':
-        return 'Settings';
+      case '/admin/bonus':
+        return 'Bonus Calculator';
       default:
         return 'Admin Panel';
     }
@@ -143,17 +137,17 @@ function AppRoutes() {
               <Dashboard />
             </ProtectedRoute>
           } />
+          <Route path="/articles/:slug" element={<ArticleDetail />} />
           <Route path="/admin/*" element={
             <ProtectedRoute requiredRole="admin">
               <AdminLayout>
                 <Routes>
                   <Route index element={<AdminDashboard />} />
                   <Route path="talents" element={<TalentManagement />} />
-                  <Route path="search" element={<TalentSearch />} />
                   <Route path="upload" element={<PerformanceUpload />} />
-                  <Route path="registrations" element={<Registrations />} />
-                  <Route path="articles" element={<Articles />} />
-                  <Route path="settings" element={<Settings />} />
+                  <Route path="bonus" element={<BonusCalculator />} />
+                  <Route path="articles" element={<AdminArticles />} />
+                  <Route path="talent-search" element={<TalentSearch />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </AdminLayout>

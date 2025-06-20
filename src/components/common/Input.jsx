@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import useThemeStore from '../../store/themeStore';
 
 const Input = ({
   label,
@@ -8,12 +9,11 @@ const Input = ({
   className = '',
   ...props
 }) => {
+  const { theme } = useThemeStore();
   return (
     <div className="w-full">
       {label && (
-        <label className="block text-sm font-medium text-meta-gray-300 mb-1.5">
-          {label}
-        </label>
+        <label className={`block text-sm font-medium mb-1.5 ${theme === 'dark' ? 'text-meta-gray-200' : 'text-meta-black'}`}>{label}</label>
       )}
       <div className="relative">
         {Icon && (
@@ -25,8 +25,7 @@ const Input = ({
           whileFocus={{ scale: 1.01 }}
           className={`
             w-full px-4 py-2.5 rounded-lg
-            bg-meta-gray-800/50 border border-meta-gray-700
-            text-white placeholder-meta-gray-500
+            ${theme === 'dark' ? 'bg-meta-gray-800/50 border border-meta-gray-700 text-white placeholder-meta-gray-500' : 'bg-white border border-meta-gray-300 text-meta-black placeholder-meta-gray-400'}
             focus:outline-none focus:ring-2 focus:ring-meta-blue/50 focus:border-transparent
             transition-all duration-200
             ${Icon ? 'pl-10' : ''}
