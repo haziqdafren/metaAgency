@@ -19,6 +19,12 @@ const useThemeStore = create((set) => ({
     }
     return { theme: newTheme };
   }),
+  setTheme: (newTheme) => set(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('theme', newTheme);
+    }
+    return { theme: newTheme };
+  }),
 }));
 
 export default useThemeStore; 

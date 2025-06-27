@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@400;500;600;700;800;900&family=Noto+Sans:wght@400;500;600;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -45,8 +45,9 @@
     @apply container mx-auto px-4 sm:px-6 lg:px-8;
   }
 
+  /* Meta Agency Brand Buttons */
   .btn {
-    @apply inline-flex items-center justify-center rounded-lg font-semibold transition-all duration-200;
+    @apply inline-flex items-center justify-center rounded-lg font-semibold transition-all duration-300 transform;
   }
 
   .btn-primary {
@@ -55,11 +56,56 @@
 
   /* .btn-secondary: Use theme-based classes in components */
 
-  /* .card: Use theme-based classes in components */
+  .btn-indonesian {
+    @apply bg-gradient-to-r from-red-500 via-white to-red-500 text-red-800 font-bold hover:scale-105 border border-red-600;
+  }
 
-  /* .input: Use theme-based classes in components */
+  /* Indonesian-inspired cards */
+  .card-batik {
+    @apply relative overflow-hidden;
+    background: linear-gradient(135deg, rgba(255,193,7,0.1) 0%, rgba(244,67,54,0.1) 100%);
+  }
 
-  /* .label: Use theme-based classes in components */
+  .card-batik::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+      radial-gradient(circle at 25% 25%, rgba(255,193,7,0.1) 0%, transparent 50%),
+      radial-gradient(circle at 75% 75%, rgba(244,67,54,0.1) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  /* Indonesian text styling */
+  .text-indonesian {
+    @apply font-indonesian;
+    font-feature-settings: "liga" 1, "kern" 1;
+  }
+
+  /* Cultural accent borders */
+  .border-indonesian {
+    border-image: linear-gradient(45deg, #FFC107, #F44336, #009688) 1;
+  }
+
+  /* TikTok-style elements */
+  .tiktok-glow {
+    box-shadow: 
+      0 0 20px rgba(255,193,7,0.3),
+      0 0 40px rgba(244,67,54,0.2),
+      0 0 60px rgba(0,150,136,0.1);
+  }
+
+  /* Meta Agency signature gradients */
+  .gradient-indonesian {
+    background: linear-gradient(135deg, #FFC107 0%, #F44336 50%, #009688 100%);
+  }
+
+  .gradient-meta {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  }
 }
 
 @layer utilities {

@@ -148,32 +148,25 @@ const AboutSection = () => {
                   key={feature.title}
                   variants={itemVariants}
                   whileHover={{ 
-                    scale: 1.05,
-                    rotateY: 5,
-                    rotateX: 5,
-                    boxShadow: "0 20px 40px rgba(0,0,0,0.1)",
-                    transition: { duration: 0.3 }
+                    scale: 1.08,
+                    boxShadow: "0 12px 32px 0 rgba(34,197,246,0.18)",
+                    background: 'linear-gradient(135deg, rgba(34,197,246,0.08) 0%, rgba(14,165,233,0.08) 100%)',
+                    transition: { duration: 0.25 }
                   }}
-                  whileTap={{ scale: 0.95 }}
-                  className="relative group perspective-1000"
+                  whileTap={{ scale: 0.97 }}
+                  tabIndex={0}
+                  className="relative group perspective-1000 focus:outline-none focus-visible:ring-2 focus-visible:ring-meta-blue focus-visible:ring-offset-2"
                 >
+                  {/* Soft glow behind icon */}
                   <motion.div 
-                    className="absolute inset-0 bg-gradient-to-r from-meta-blue/20 to-cyan-500/20 rounded-xl blur-xl group-hover:blur-2xl transition-all"
-                    animate={{
-                      scale: [1, 1.1, 1],
-                      opacity: [0.5, 0.7, 0.5],
-                    }}
-                    transition={{
-                      duration: 4,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
+                    className="absolute -top-6 left-1/2 -translate-x-1/2 w-20 h-20 rounded-full bg-gradient-to-br from-meta-blue/30 to-cyan-500/20 blur-2xl z-0"
                   />
-                  <div className={`relative backdrop-blur-sm rounded-xl p-8 h-full border transition-colors duration-500 transform-gpu ${theme === 'dark' ? 'bg-black/50 border-meta-gray-800' : 'bg-white border-meta-gray-200'}`}>
+                  <div className={`relative backdrop-blur-sm rounded-xl p-8 h-full border shadow-lg transition-colors duration-500 transform-gpu ${theme === 'dark' ? 'bg-black/50 border-meta-gray-800' : 'bg-white border-meta-gray-200'}`}>
                     <motion.div 
-                      className={`${feature.color} mb-6`}
-                      whileHover={{ scale: 1.1, rotate: 5 }}
-                      transition={{ type: "spring", stiffness: 300 }}
+                      className={`${feature.color} mb-6 relative z-10`}
+                      whileHover={{ scale: 1.18, rotate: 8 }}
+                      whileTap={{ scale: 0.95 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 12 }}
                     >
                       <Icon className="w-12 h-12" />
                     </motion.div>
@@ -199,68 +192,25 @@ const AboutSection = () => {
             })}
           </motion.div>
 
-          {/* Stats Section */}
+          {/* Stats Section - entrance animation */}
           <motion.div
-            className="mt-24 grid grid-cols-1 md:grid-cols-3 gap-8"
-            initial="hidden"
-            whileInView="visible"
+            className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-8"
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.2 }}
-            variants={containerVariants}
+            transition={{ duration: 0.7, delay: 0.2 }}
           >
-            {stats.map((stat, index) => {
+            {stats.map((stat, idx) => {
               const Icon = stat.icon;
               return (
-                <motion.div
+                <div
                   key={stat.label}
-                  variants={itemVariants}
-                  whileHover={{ 
-                    scale: 1.05,
-                    rotateY: 5,
-                    rotateX: 5,
-                    boxShadow: "0 20px 40px rgba(0,0,0,0.1)",
-                    transition: { duration: 0.3 }
-                  }}
-                  whileTap={{ scale: 0.95 }}
-                  className="relative group perspective-1000"
+                  className={`flex flex-col items-center justify-center rounded-xl p-8 shadow-md border transition-colors duration-500 ${theme === 'dark' ? 'bg-black/40 border-meta-gray-800' : 'bg-white border-meta-gray-200'}`}
                 >
-                  <motion.div 
-                    className="absolute inset-0 bg-gradient-to-r from-meta-blue/20 to-cyan-500/20 rounded-xl blur-xl group-hover:blur-2xl transition-all"
-                    animate={{
-                      scale: [1, 1.1, 1],
-                      opacity: [0.5, 0.7, 0.5],
-                    }}
-                    transition={{
-                      duration: 4,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                  />
-                  <div className={`relative backdrop-blur-sm rounded-xl p-8 border transition-colors duration-500 transform-gpu ${theme === 'dark' ? 'bg-black/50 border-meta-gray-800' : 'bg-white border-meta-gray-200'}`}>
-                    <motion.div
-                      className={`${stat.color} mb-3 mx-auto`}
-                      whileHover={{ scale: 1.1, rotate: 5 }}
-                      transition={{ type: "spring", stiffness: 300 }}
-                    >
-                      <Icon className="w-8 h-8" />
-                    </motion.div>
-                    <motion.h3 
-                      className={`text-3xl font-bold mb-1 transition-colors duration-500 ${theme === 'dark' ? 'text-white' : 'text-meta-black'}`}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      whileInView={{ opacity: 1, scale: 1 }}
-                      transition={{ type: "spring", stiffness: 200 }}
-                    >
-                      {stat.value}
-                    </motion.h3>
-                    <motion.p 
-                      className={`transition-colors duration-500 ${theme === 'dark' ? 'text-meta-gray-400' : 'text-meta-black'}`}
-                      initial={{ opacity: 0 }}
-                      whileInView={{ opacity: 1 }}
-                      transition={{ delay: 0.2 }}
-                    >
-                      {stat.label}
-                    </motion.p>
-                  </div>
-                </motion.div>
+                  <Icon className={`w-10 h-10 mb-3 ${stat.color}`} />
+                  <span className={`text-3xl font-bold mb-1 ${theme === 'dark' ? 'text-white' : 'text-meta-black'}`}>{stat.value}</span>
+                  <span className={`text-lg ${theme === 'dark' ? 'text-meta-gray-400' : 'text-meta-black'}`}>{stat.label}</span>
+                </div>
               );
             })}
           </motion.div>

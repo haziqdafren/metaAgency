@@ -25,7 +25,9 @@ module.exports = {
       },
       fontFamily: {
         'sans': ['Inter', 'system-ui', 'sans-serif'],
-        'display': ['Montserrat', 'system-ui', 'sans-serif'],
+        'display': ['Montserrat', 'Inter', 'system-ui', 'sans-serif'],
+        'brand': ['Montserrat', 'Inter', 'system-ui', 'sans-serif'], // For Meta Agency branding
+        'indonesian': ['Noto Sans', 'Inter', 'system-ui', 'sans-serif'], // For Indonesian text optimization
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-in-out',

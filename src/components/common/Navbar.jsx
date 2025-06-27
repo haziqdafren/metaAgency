@@ -80,9 +80,7 @@ const Navbar = () => {
                 <div className="absolute -inset-1 bg-gradient-to-r from-meta-blue to-cyan-500 rounded-lg blur opacity-0 group-hover:opacity-30 transition-opacity" />
               </div>
               <div>
-                <h1 className={`font-display font-black text-xl leading-tight transition-colors duration-500 ${theme === 'dark' ? 'text-white' : 'text-meta-black'}`}>
-                  META
-                </h1>
+                <h1 className={`font-display font-black text-xl leading-tight transition-colors duration-500 ${theme === 'dark' ? 'text-white' : 'text-meta-black'}`}>META</h1>
                 <p className={`text-xs transition-colors duration-500 ${theme === 'dark' ? 'text-meta-gray-400' : 'text-meta-gray-800'}`}>AGENCY</p>
               </div>
             </Link>

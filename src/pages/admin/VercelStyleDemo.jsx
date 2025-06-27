@@ -2,11 +2,9 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
-import useThemeStore from '../../store/themeStore';
 import { Upload } from 'lucide-react';
 
 const VercelStyleDemo = () => {
-  const { theme } = useThemeStore();
   const [file, setFile] = useState(null);
   const [dragActive, setDragActive] = useState(false);
 
@@ -31,9 +29,9 @@ const VercelStyleDemo = () => {
   };
 
   return (
-    <div className={`min-h-screen p-8 flex items-center justify-center ${theme === 'dark' ? 'bg-[#111112]' : 'bg-gray-50'}`}>
+    <div className="min-h-screen p-8 flex items-center justify-center bg-gray-50">
       <motion.div
-        className={`w-full max-w-2xl rounded-2xl shadow-2xl p-10 transition-colors duration-500 ${theme === 'dark' ? 'bg-[#18181b] text-white' : 'bg-white text-[#18181b]'}`}
+        className={`w-full max-w-2xl rounded-2xl shadow-2xl p-10 transition-colors duration-500 bg-white text-[#18181b]`}
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
       >
@@ -49,11 +47,7 @@ const VercelStyleDemo = () => {
             <div
               className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-6 cursor-pointer transition-all duration-200 ${
                 dragActive
-                  ? theme === 'dark'
-                    ? 'border-accent bg-[#232324]/80'
-                    : 'border-accent bg-gray-100'
-                  : theme === 'dark'
-                  ? 'border-gray-700 bg-[#232324] hover:bg-[#232324]/80'
+                  ? 'border-accent bg-gray-100'
                   : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
               }`}
               onDragOver={handleDragOver}
@@ -79,8 +73,8 @@ const VercelStyleDemo = () => {
         <div className="mt-10">
           <h3 className="text-lg font-semibold mb-4">Sample Table</h3>
           <div className="overflow-x-auto rounded-xl shadow">
-            <table className={`min-w-full divide-y ${theme === 'dark' ? 'divide-meta-gray-700 bg-meta-gray-900 text-white' : 'divide-gray-200 bg-white text-meta-black'}`}>
-              <thead className={theme === 'dark' ? 'bg-meta-gray-800' : 'bg-gray-100'}>
+            <table className="min-w-full divide-y divide-gray-200 bg-white text-meta-black">
+              <thead className="bg-gray-100">
                 <tr>
                   <th className="px-4 py-2 text-xs font-medium uppercase">Name</th>
                   <th className="px-4 py-2 text-xs font-medium uppercase">Email</th>
@@ -88,14 +82,14 @@ const VercelStyleDemo = () => {
                 </tr>
               </thead>
               <tbody>
-                <tr className={theme === 'dark' ? 'hover:bg-meta-gray-800' : 'hover:bg-gray-50'}>
+                <tr className="hover:bg-gray-50">
                   <td className="px-4 py-2">Jane Doe</td>
                   <td className="px-4 py-2">jane@demo.com</td>
                   <td className="px-4 py-2">
                     <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-accent/10 text-accent">Active</span>
                   </td>
                 </tr>
-                <tr className={theme === 'dark' ? 'hover:bg-meta-gray-800' : 'hover:bg-gray-50'}>
+                <tr className="hover:bg-gray-50">
                   <td className="px-4 py-2">John Smith</td>
                   <td className="px-4 py-2">john@demo.com</td>
                   <td className="px-4 py-2">

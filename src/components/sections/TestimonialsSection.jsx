@@ -87,22 +87,27 @@ const TestimonialsSection = () => {
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentIndex}
-                initial={{ opacity: 0, x: 100 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -100 }}
-                transition={{ duration: 0.5 }}
+                initial={{ opacity: 0, x: 100, scale: 0.95 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: -100, scale: 0.95 }}
+                transition={{ duration: 0.5, type: 'spring', bounce: 0.4 }}
                 className="relative"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-meta-blue/20 to-cyan-500/20 rounded-xl blur-xl" />
-                <div className={`relative backdrop-blur-sm rounded-xl p-8 md:p-12 border transition-colors duration-500 ${theme === 'dark' ? 'bg-black/50 border-meta-gray-800' : 'bg-white border-meta-gray-200'}`}>
+                <div className={`relative backdrop-blur-sm rounded-xl p-8 md:p-12 border shadow-2xl transition-colors duration-500 ${theme === 'dark' ? 'bg-black/50 border-meta-gray-800' : 'bg-white border-meta-gray-200'}`}>
                   <div className="flex flex-col md:flex-row items-center md:items-start space-y-6 md:space-y-0 md:space-x-8">
-                    <div className="flex-shrink-0">
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.7, rotate: -8 }}
+                      animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                      transition={{ duration: 0.7, type: 'spring', bounce: 0.5 }}
+                      className="flex-shrink-0 relative"
+                    >
                       <img
                         src={testimonials[currentIndex].image}
                         alt={testimonials[currentIndex].name}
-                        className="w-24 h-24 rounded-full object-cover border-4 border-meta-blue"
+                        className="w-24 h-24 rounded-full object-cover border-4 border-meta-blue shadow-lg"
                       />
-                    </div>
+                    </motion.div>
                     <div className="flex-1 text-center md:text-left">
                       <div className="flex justify-center md:justify-start space-x-1 mb-4">
                         {[...Array(testimonials[currentIndex].rating)].map((_, i) => (
@@ -112,7 +117,9 @@ const TestimonialsSection = () => {
                       <h3 className={`text-xl font-bold mb-2 transition-colors duration-500 ${theme === 'dark' ? 'text-white' : 'text-meta-black'}`}>{testimonials[currentIndex].name}</h3>
                       <p className={`${theme === 'dark' ? 'text-meta-gray-400' : 'text-meta-gray-600'} mb-1`}>{testimonials[currentIndex].role}</p>
                       <p className={`${theme === 'dark' ? 'text-meta-gray-400' : 'text-meta-gray-600'} mb-1`}>{testimonials[currentIndex].followers} Followers</p>
-                      <p className={`text-lg italic mb-2 transition-colors duration-500 ${theme === 'dark' ? 'text-white' : 'text-meta-black'}`}>"{testimonials[currentIndex].quote}"</p>
+                      <p className={`text-lg italic mb-2 transition-colors duration-500 ${theme === 'dark' ? 'text-white' : 'text-meta-black'}`}>
+                        "{testimonials[currentIndex].quote}"
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -121,18 +128,26 @@ const TestimonialsSection = () => {
 
             {/* Navigation Buttons */}
             <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 flex justify-between px-4">
-              <button
+              <motion.button
+                whileHover={{ scale: 1.15, y: -4 }}
+                whileTap={{ scale: 0.95 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 15 }}
                 onClick={prevTestimonial}
-                className={`p-2 rounded-full backdrop-blur-sm border transition-colors duration-500 ${theme === 'dark' ? 'bg-black/50 border-meta-gray-800 text-white hover:bg-meta-blue/20' : 'bg-white border-meta-gray-200 text-meta-black hover:bg-meta-gray-100'}`}
+                className={`p-2 rounded-full backdrop-blur-sm border shadow transition-colors duration-500 ${theme === 'dark' ? 'bg-black/50 border-meta-gray-800 text-white hover:bg-meta-blue/20' : 'bg-white border-meta-gray-200 text-meta-black hover:bg-meta-gray-100'}`}
+                aria-label="Previous testimonial"
               >
                 <ChevronLeft className="w-6 h-6" />
-              </button>
-              <button
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.15, y: -4 }}
+                whileTap={{ scale: 0.95 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 15 }}
                 onClick={nextTestimonial}
-                className={`p-2 rounded-full backdrop-blur-sm border transition-colors duration-500 ${theme === 'dark' ? 'bg-black/50 border-meta-gray-800 text-white hover:bg-meta-blue/20' : 'bg-white border-meta-gray-200 text-meta-black hover:bg-meta-gray-100'}`}
+                className={`p-2 rounded-full backdrop-blur-sm border shadow transition-colors duration-500 ${theme === 'dark' ? 'bg-black/50 border-meta-gray-800 text-white hover:bg-meta-blue/20' : 'bg-white border-meta-gray-200 text-meta-black hover:bg-meta-gray-100'}`}
+                aria-label="Next testimonial"
               >
                 <ChevronRight className="w-6 h-6" />
-              </button>
+              </motion.button>
             </div>
 
             {/* Dots Indicator */}
@@ -141,9 +156,10 @@ const TestimonialsSection = () => {
                 <button
                   key={index}
                   onClick={() => setCurrentIndex(index)}
-                  className={`w-2 h-2 rounded-full transition-colors ${
+                  className={`w-2 h-2 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-meta-blue ${
                     index === currentIndex ? 'bg-meta-blue' : 'bg-meta-gray-600'
                   }`}
+                  aria-label={`Go to testimonial ${index + 1}`}
                 />
               ))}
             </div>

@@ -13,7 +13,6 @@ import {
   BookOpen
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import useThemeStore from '../../store/themeStore';
 import useSidebarStore from '../../store/sidebarStore';
 import { NavLink } from 'react-router-dom';
 
@@ -21,7 +20,6 @@ const AdminSidebar = () => {
   const { isOpen, toggleSidebar } = useSidebarStore();
   const [hoveredItem, setHoveredItem] = useState(null);
   const location = useLocation();
-  const { theme } = useThemeStore();
 
   const menuItems = [
     {

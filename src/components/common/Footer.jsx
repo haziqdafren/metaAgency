@@ -11,6 +11,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
+import { motion } from 'framer-motion';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -50,16 +51,23 @@ const Footer = () => {
   ];
 
   return (
-    <footer className={`border-t transition-colors duration-500 ${theme === 'dark' ? 'bg-black border-meta-gray-800' : 'bg-white border-meta-gray-200'}`}>
+    <motion.footer
+      initial={{ opacity: 0, y: 40 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.7, ease: 'easeOut' }}
+      className={`border-t transition-colors duration-500 ${theme === 'dark' ? 'bg-black border-meta-gray-800' : 'bg-white border-meta-gray-200'}`}
+    >
       <div className="container-custom">
         {/* Main Footer Content */}
         <div className="py-12 lg:py-16">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
             {/* Company Info */}
             <div className="lg:col-span-2">
-              <Link to="/" className="flex items-center space-x-3 mb-4">
-                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-                  <span className="text-black font-black text-xl">M</span>
+              <Link to="/" className="flex items-center space-x-3 mb-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-meta-blue focus-visible:ring-offset-2">
+                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center relative">
+                  {/* Soft glow behind logo */}
+                  <span className="absolute inset-0 rounded-lg bg-gradient-to-br from-meta-blue/30 to-cyan-500/20 blur-md z-0" />
+                  <span className="text-black font-black text-xl relative z-10">M</span>
                 </div>
                 <div>
                   <h1 className={`font-display font-black text-xl leading-tight transition-colors duration-500 ${theme === 'dark' ? 'text-white' : 'text-meta-black'}`}>
@@ -77,14 +85,14 @@ const Footer = () => {
               <div className="space-y-3">
                 <a 
                   href="mailto:info@metaagency.id" 
-                  className={`flex items-center space-x-2 text-sm transition-colors ${theme === 'dark' ? 'text-meta-gray-400 hover:text-white' : 'text-meta-black hover:text-meta-black'}`}
+                  className={`flex items-center space-x-2 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-meta-blue focus-visible:ring-offset-2 ${theme === 'dark' ? 'text-meta-gray-400 hover:text-white' : 'text-meta-black hover:text-meta-black'}`}
                 >
                   <Mail className="w-4 h-4" />
                   <span>info@metaagency.id</span>
                 </a>
                 <a 
                   href="tel:+6281234567890" 
-                  className={`flex items-center space-x-2 text-sm transition-colors ${theme === 'dark' ? 'text-meta-gray-400 hover:text-white' : 'text-meta-black hover:text-meta-black'}`}
+                  className={`flex items-center space-x-2 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-meta-blue focus-visible:ring-offset-2 ${theme === 'dark' ? 'text-meta-gray-400 hover:text-white' : 'text-meta-black hover:text-meta-black'}`}
                 >
                   <Phone className="w-4 h-4" />
                   <span>+62 812-3456-7890</span>
@@ -198,23 +206,26 @@ const Footer = () => {
               {socialLinks.map((social) => {
                 const Icon = social.icon;
                 return (
-                  <a
-                    key={social.label}
+                  <motion.a
+                    key={social.href}
                     href={social.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`p-2 rounded-lg transition-all ${theme === 'dark' ? 'text-meta-gray-400 hover:text-white hover:bg-meta-gray-800' : 'text-meta-black hover:bg-meta-gray-100'}`}
+                    whileHover={{ scale: 1.18, color: '#22d3ee', boxShadow: '0 2px 12px 0 rgba(34,197,246,0.18)' }}
+                    whileTap={{ scale: 0.95 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                    className={`p-2 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-meta-blue focus-visible:ring-offset-2 ${theme === 'dark' ? 'text-meta-gray-400 hover:text-white' : 'text-meta-black hover:text-meta-blue'}`}
                     aria-label={social.label}
                   >
                     <Icon className="w-5 h-5" />
-                  </a>
+                  </motion.a>
                 );
               })}
             </div>
           </div>
         </div>
       </div>
-    </footer>
+    </motion.footer>
   );
 };
 

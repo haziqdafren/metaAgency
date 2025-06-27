@@ -44,8 +44,17 @@ const Button = ({
 
   return (
     <motion.button
-      whileTap={{ scale: 0.98 }}
-      className={classes}
+      whileTap={{ scale: 0.97 }}
+      whileHover={
+        variant === 'primary'
+          ? { scale: 1.045, boxShadow: '0 6px 24px 0 rgba(34,197,246,0.18)' }
+          : { scale: 1.03, boxShadow: '0 2px 8px 0 rgba(0,0,0,0.08)' }
+      }
+      transition={{ type: 'spring', stiffness: 400, damping: 18 }}
+      className={
+        `${classes} focus:outline-none focus-visible:ring-2 focus-visible:ring-meta-blue focus-visible:ring-offset-2 shadow-md hover:shadow-xl` +
+        (variant === 'primary' ? ' bg-gradient-to-r from-meta-blue via-sky-500 to-cyan-500 bg-[length:200%_200%] hover:bg-right' : '')
+      }
       disabled={disabled || loading}
       {...props}
     >

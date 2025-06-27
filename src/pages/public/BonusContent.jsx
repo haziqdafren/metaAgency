@@ -22,107 +22,129 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } },
 };
 
+// --- Bonus Calculation Logic (from admin) ---
+const gradeRequirements = {
+  A: { days: 22, hours: 100 },
+  B: { days: 20, hours: 60 },
+  C: { days: 15, hours: 40 }
+};
+const bonusTable = {
+  A: [
+    { minCoins: 2000, bonus: 10000 },
+    { minCoins: 1000, bonus: 5000 },
+    { minCoins: 750, bonus: 3100 },
+    { minCoins: 500, bonus: 1300 },
+    { minCoins: 300, bonus: 1000 },
+    { minCoins: 200, bonus: 575 },
+    { minCoins: 100, bonus: 350 },
+    { minCoins: 50, bonus: 175 },
+    { minCoins: 30, bonus: 100 },
+    { minCoins: 10, bonus: 50 },
+  ],
+  B: [
+    { minCoins: 200, bonus: 500 },
+    { minCoins: 150, bonus: 400 },
+    { minCoins: 100, bonus: 300 },
+    { minCoins: 50, bonus: 150 },
+    { minCoins: 20, bonus: 75 },
+  ],
+  C: [
+    { minCoins: 200, bonus: 200 },
+    { minCoins: 50, bonus: 100 },
+    { minCoins: 20, bonus: 50 },
+    { minCoins: 10, bonus: 20 },
+  ]
+};
+
+function calculateBonuses(data) {
+  return data.map(creator => {
+    if (creator.is_violative) {
+      return { ...creator, qualified: false, breakdown: 'Disqualified (violative)' };
+    }
+    let grade = null;
+    let breakdown = '';
+    if ((creator.valid_days ?? creator.validDays) >= gradeRequirements.A.days && (creator.streaming_hours ?? creator.liveHours) >= gradeRequirements.A.hours) {
+      grade = 'A';
+      breakdown = `Grade A: ${creator.valid_days ?? creator.validDays} days, ${creator.streaming_hours ?? creator.liveHours} hours`;
+    } else if ((creator.valid_days ?? creator.validDays) >= gradeRequirements.B.days && (creator.streaming_hours ?? creator.liveHours) >= gradeRequirements.B.hours) {
+      grade = 'B';
+      breakdown = `Grade B: ${creator.valid_days ?? creator.validDays} days, ${creator.streaming_hours ?? creator.liveHours} hours`;
+    } else if ((creator.valid_days ?? creator.validDays) >= gradeRequirements.C.days && (creator.streaming_hours ?? creator.liveHours) >= gradeRequirements.C.hours) {
+      grade = 'C';
+      breakdown = `Grade C: ${creator.valid_days ?? creator.validDays} days, ${creator.streaming_hours ?? creator.liveHours} hours`;
+    }
+    if (!grade) {
+      return { ...creator, qualified: false, breakdown: 'Not enough days/hours' };
+    }
+    const bonusTiers = bonusTable[grade];
+    let bonusAmount = 0;
+    let bonusRule = '';
+    for (const tier of bonusTiers) {
+      if ((creator.diamond_earned ?? creator.diamonds) >= tier.minCoins * 1000) {
+        bonusAmount = tier.bonus * 1000;
+        bonusRule = `Diamonds: ${(creator.diamond_earned ?? creator.diamonds)} >= ${tier.minCoins * 1000} (Rule: ${tier.minCoins}RB → ${tier.bonus}RB)`;
+        break;
+      }
+    }
+    if (bonusAmount === 0) {
+      return { ...creator, grade, qualified: false, breakdown: breakdown + ' | Not enough diamonds' };
+    }
+    return {
+      ...creator,
+      grade,
+      bonusAmount,
+      qualified: true,
+      breakdown: breakdown + ' | ' + bonusRule
+    };
+  });
+}
+
+function calculateSummary(allData, eligibleData) {
+  return {
+    totalCreators: allData.length,
+    eligibleCreators: eligibleData.length,
+    gradeA: eligibleData.filter(c => c.grade === 'A').length,
+    gradeB: eligibleData.filter(c => c.grade === 'B').length,
+    gradeC: eligibleData.filter(c => c.grade === 'C').length,
+    notQualified: allData.length - eligibleData.length,
+    violativeCreators: allData.filter(c => c.is_violative).length,
+    totalBonusAmount: eligibleData.reduce((sum, c) => sum + (c.bonusAmount || 0), 0),
+    totalDiamonds: eligibleData.reduce((sum, c) => sum + (c.diamond_earned || 0), 0),
+  };
+}
+// --- End Bonus Logic ---
+
 const BonusContent = () => {
   const { theme } = useThemeStore();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [performanceReports, setPerformanceReports] = useState([]);
-  const [talentPerformance, setTalentPerformance] = useState([]);
-  const [achievementBadges, setAchievementBadges] = useState([]);
-  const [selectedMonth, setSelectedMonth] = useState('');
+  const [bonusData, setBonusData] = useState([]);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [summary, setSummary] = useState({});
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       try {
-        // Fetch performance reports
-        const { data: reports, error: reportsError } = await supabase
-          .from('performance_reports')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (reportsError) throw reportsError;
-
-        // Set initial selected month
-        if (reports && reports.length > 0) {
-          const latestReport = reports[0];
-          setSelectedMonth(`${latestReport.month}/${latestReport.year}`);
-        }
-
-        setPerformanceReports(reports);
-
-        // Fetch talent performance for the selected month
-        if (reports && reports.length > 0) {
-          const latestReport = reports[0];
-          const { data: performance, error: performanceError } = await supabase
-            .from('talent_performance')
-            .select(`
-              *,
-              talent:talent_profiles(
-                username_tiktok,
-                followers_count
-              )
-            `)
-            .eq('report_id', latestReport.id)
-            .order('ranking', { ascending: true });
-
-          if (performanceError) throw performanceError;
-          setTalentPerformance(performance);
-        }
-
-        // Fetch achievement badges
-        const { data: badges, error: badgesError } = await supabase
-          .from('achievement_badges')
-          .select('*');
-
-        if (badgesError) throw badgesError;
-        setAchievementBadges(badges);
-
+        // Fetch bonus calculations for the selected month/year
+        const { data: bonuses, error: bonusError } = await supabase
+          .from('bonus_calculations')
+          .select(`*, creator:creators(username_tiktok)`)
+          .eq('month', selectedMonth)
+          .eq('year', selectedYear)
+          .order('bonus_amount_idr', { ascending: false });
+        if (bonusError) throw bonusError;
+        setBonusData(bonuses || []);
+        setSummary(calculateSummary(bonuses || [], (bonuses || []).filter(c => c.bonus_amount_idr > 0)));
       } catch (err) {
         setError(err.message);
       } finally {
         setLoading(false);
       }
     };
-
     fetchData();
-  }, []);
-
-  useEffect(() => {
-    const fetchPerformanceForMonth = async () => {
-      if (!selectedMonth) return;
-
-      const [month, year] = selectedMonth.split('/');
-      try {
-        const { data: report, error: reportError } = await supabase
-          .from('performance_reports')
-          .select('id')
-          .eq('month', parseInt(month))
-          .eq('year', parseInt(year))
-          .single();
-
-        if (reportError) throw reportError;
-
-        const { data: performance, error: performanceError } = await supabase
-          .from('talent_performance')
-          .select(`
-            *,
-            talent:talent_profiles(
-              username_tiktok,
-              followers_count
-            )
-          `)
-          .eq('report_id', report.id)
-          .order('ranking', { ascending: true });
-
-        if (performanceError) throw performanceError;
-        setTalentPerformance(performance);
-      } catch (err) {
-        setError(err.message);
-      }
-    };
-
-    fetchPerformanceForMonth();
-  }, [selectedMonth]);
+  }, [selectedMonth, selectedYear]);
 
   if (loading) {
     return (
@@ -150,7 +172,29 @@ const BonusContent = () => {
     >
       <h1 className="text-3xl font-bold mb-6">Bonus Content for Talents</h1>
 
-      {/* Monthly Performance Reports Section */}
+      {/* Bonus Summary Section */}
+      {summary && summary.totalCreators > 0 && (
+        <motion.section
+          variants={sectionVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.2 }}
+          className={`mb-8 p-6 rounded-xl shadow-md transition-colors duration-500 ${theme === 'dark' ? 'bg-meta-gray-900 border border-meta-gray-800' : 'bg-white border border-gray-200'}`}
+        >
+          <h2 className="text-xl font-semibold mb-2">Bonus Summary</h2>
+          <div className="flex flex-wrap gap-6 text-base">
+            <div>Total Talents: <span className="font-bold">{summary.totalCreators}</span></div>
+            <div>Eligible for Bonus: <span className="font-bold text-green-600 dark:text-green-400">{summary.eligibleCreators}</span></div>
+            <div>Grade A: <span className="font-bold">{summary.gradeA}</span></div>
+            <div>Grade B: <span className="font-bold">{summary.gradeB}</span></div>
+            <div>Grade C: <span className="font-bold">{summary.gradeC}</span></div>
+            <div>Not Qualified: <span className="font-bold text-red-500">{summary.notQualified}</span></div>
+            <div>Total Bonus: <span className="font-bold text-meta-blue">Rp {summary.totalBonusAmount?.toLocaleString('id-ID')}</span></div>
+          </div>
+        </motion.section>
+      )}
+
+      {/* Bonus Table Section */}
       <motion.section
         variants={sectionVariants}
         initial="hidden"
@@ -159,30 +203,30 @@ const BonusContent = () => {
         className={`mb-8 p-6 rounded-xl shadow-md transition-colors duration-500 ${theme === 'dark' ? 'bg-meta-gray-900 border border-meta-gray-800' : 'bg-white border border-gray-200'}`}
       >
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-semibold">Monthly Performance Reports</h2>
+          <h2 className="text-2xl font-semibold">Bonus Results</h2>
           <div className="flex items-center space-x-4">
             <select
               value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
+              onChange={(e) => setSelectedMonth(Number(e.target.value))}
               className={`p-2 rounded-md transition-colors duration-300 ${theme === 'dark' ? 'bg-meta-gray-800 text-white border-meta-gray-700' : 'bg-gray-100 text-meta-black border-gray-300'}`}
             >
-              {performanceReports.map((report) => (
-                <option key={report.id} value={`${report.month}/${report.year}`}>
-                  {new Date(report.year, report.month - 1).toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+              {[...Array(12)].map((_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  {new Date(2000, i).toLocaleDateString('id-ID', { month: 'long' })}
                 </option>
               ))}
             </select>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="bg-meta-blue text-white py-2 px-4 rounded-lg flex items-center shadow-md hover:bg-meta-blue/90 transition"
-            >
-              <Download className="w-4 h-4 mr-2" /> Download Report
-            </motion.button>
+            <input
+              type="number"
+              value={selectedYear}
+              onChange={e => setSelectedYear(Number(e.target.value))}
+              className={`p-2 rounded-md border transition-colors duration-300 w-24 ${theme === 'dark' ? 'bg-meta-gray-800 text-white border-meta-gray-700' : 'bg-gray-100 text-meta-black border-gray-300'}`}
+              min={2020}
+              max={2100}
+            />
           </div>
         </div>
-
-        {talentPerformance.length > 0 ? (
+        {bonusData.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-left table-auto">
               <thead>
@@ -194,16 +238,18 @@ const BonusContent = () => {
                   className={`text-sm font-semibold ${theme === 'dark' ? 'text-meta-gray-400' : 'text-meta-gray-600'} border-b ${theme === 'dark' ? 'border-meta-gray-700' : 'border-gray-200'}`}
                 >
                   <th className="py-3 px-4">Username</th>
-                  <th className="py-3 px-4">Diamonds Earned</th>
-                  <th className="py-3 px-4">Viewers</th>
-                  <th className="py-3 px-4">Streaming Hours</th>
-                  <th className="py-3 px-4">Ranking</th>
+                  <th className="py-3 px-4">Diamonds</th>
+                  <th className="py-3 px-4">Valid Days</th>
+                  <th className="py-3 px-4">Live Hours</th>
+                  <th className="py-3 px-4">Grade</th>
+                  <th className="py-3 px-4">Bonus</th>
+                  <th className="py-3 px-4">Status</th>
                 </motion.tr>
               </thead>
               <tbody>
-                {talentPerformance.map((data, index) => (
+                {bonusData.map((row, index) => (
                   <motion.tr
-                    key={data.id}
+                    key={row.id || index}
                     variants={itemVariants}
                     initial="hidden"
                     whileInView="visible"
@@ -211,13 +257,19 @@ const BonusContent = () => {
                     transition={{ delay: index * 0.05 + 0.2 }}
                     className={`border-b ${theme === 'dark' ? 'border-meta-gray-800' : 'border-gray-100'} ${theme === 'dark' ? 'hover:bg-meta-gray-800' : 'hover:bg-gray-50'}`}
                   >
-                    <td className="py-3 px-4 flex items-center">
-                      <span>{data.talent?.username_tiktok}</span>
+                    <td className="py-3 px-4">{row.creator?.username_tiktok || '-'}</td>
+                    <td className="py-3 px-4">{row.diamonds?.toLocaleString('id-ID') ?? '-'}</td>
+                    <td className="py-3 px-4">{row.valid_days ?? '-'}</td>
+                    <td className="py-3 px-4">{row.live_hours ?? '-'}</td>
+                    <td className="py-3 px-4 font-bold text-meta-blue">{row.tier || '-'}</td>
+                    <td className="py-3 px-4 font-bold text-green-600 dark:text-green-400">{row.bonus_amount_idr ? `Rp ${row.bonus_amount_idr.toLocaleString('id-ID')}` : '-'}</td>
+                    <td className="py-3 px-4">
+                      <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold
+                        ${row.payment_status === 'paid' ? 'bg-green-100 text-green-700' : row.payment_status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}
+                      >
+                        {row.payment_status ? row.payment_status.charAt(0).toUpperCase() + row.payment_status.slice(1) : '-'}
+                      </span>
                     </td>
-                    <td className="py-3 px-4 font-medium">{data.diamond_earned.toLocaleString()}</td>
-                    <td className="py-3 px-4">{data.viewers_count.toLocaleString()}</td>
-                    <td className="py-3 px-4">{data.streaming_hours}h</td>
-                    <td className="py-3 px-4">{data.ranking}</td>
                   </motion.tr>
                 ))}
               </tbody>
@@ -231,49 +283,9 @@ const BonusContent = () => {
             viewport={{ once: true, amount: 0.1 }}
             className={`${theme === 'dark' ? 'text-meta-gray-400' : 'text-meta-gray-600'}`}
           >
-            No performance data available for this month.
+            No bonus data available for this month.
           </motion.p>
         )}
-      </motion.section>
-
-      {/* Achievement Badges/Rewards Section */}
-      <motion.section
-        variants={sectionVariants}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, amount: 0.2 }}
-        className={`mb-8 p-6 rounded-xl shadow-md transition-colors duration-500 ${theme === 'dark' ? 'bg-meta-gray-900 border border-meta-gray-800' : 'bg-white border border-gray-200'}`}>
-        <h2 className="text-2xl font-semibold mb-4">Your Achievements & Rewards</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {achievementBadges.map((badge, index) => (
-            <motion.div
-              key={badge.id}
-              variants={itemVariants}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, amount: 0.1 }}
-              transition={{ delay: index * 0.1 + 0.2 }}
-              whileHover={{ scale: 1.02, boxShadow: theme === 'dark' ? '0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.1)' : '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)' }}
-              className={`p-5 rounded-lg border flex flex-col items-center text-center transition-all duration-300 ${theme === 'dark' ? 'bg-meta-gray-800 border-meta-gray-700' : 'bg-gray-50 border-gray-200'}`}
-            >
-              <div className="w-10 h-10 mb-3">
-                {badge.icon_name === 'star' && <Star className="w-10 h-10 text-yellow-500" />}
-                {badge.icon_name === 'trophy' && <Trophy className="w-10 h-10 text-blue-500" />}
-                {badge.icon_name === 'gift' && <Gift className="w-10 h-10 text-green-500" />}
-                {badge.icon_name === 'trending' && <TrendingUp className="w-10 h-10 text-purple-500" />}
-              </div>
-              <h3 className="text-lg font-medium mt-3 mb-1">{badge.name}</h3>
-              <p className={`text-sm ${theme === 'dark' ? 'text-meta-gray-400' : 'text-meta-gray-600'}`}>{badge.description}</p>
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="mt-4 text-meta-blue hover:underline flex items-center text-sm font-medium"
-              >
-                <Download className="w-4 h-4 mr-1" /> Download Certificate
-              </motion.button>
-            </motion.div>
-          ))}
-        </div>
       </motion.section>
 
       {/* Tools & Resources Section */}

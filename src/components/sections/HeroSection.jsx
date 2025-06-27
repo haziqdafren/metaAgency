@@ -4,13 +4,16 @@ import { ArrowRight, Play, Users, TrendingUp, Award } from 'lucide-react';
 import { motion } from 'framer-motion';
 import useThemeStore from '../../store/themeStore';
 
+// 3D illustration asset (replace with your own or use /public/meta.webp)
+import meta3D from '../../logo.svg'; // fallback if you want to use a local SVG
+
 const HeroSection = () => {
   const [currentStat, setCurrentStat] = useState(0);
   const { theme } = useThemeStore();
   
   const stats = [
     { icon: Users, label: 'Active Creators', value: '800+', color: 'text-meta-blue' },
-    { icon: TrendingUp, label: 'Monthly Revenue', value: '₹2.5B+', color: 'text-green-500' },
+    { icon: TrendingUp, label: 'Monthly Revenue', value: 'Rp. 100M+', color: 'text-green-500' },
     { icon: Award, label: 'Success Rate', value: '95%', color: 'text-yellow-500' },
   ];
 

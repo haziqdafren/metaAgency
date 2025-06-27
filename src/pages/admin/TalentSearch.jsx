@@ -3,10 +3,8 @@ import Input from '../../components/common/Input';
 import Select from '../../components/common/Select';
 import Button from '../../components/common/Button';
 import { motion } from 'framer-motion';
-import useThemeStore from '../../store/themeStore';
 
 const TalentSearch = () => {
-  const { theme } = useThemeStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     followersMin: 0,
@@ -29,9 +27,9 @@ const TalentSearch = () => {
   };
 
   return (
-    <div className={`p-6 max-w-7xl mx-auto transition-colors duration-500 ${theme === 'dark' ? 'bg-meta-black text-white' : 'bg-gray-50 text-meta-black'}`}>
+    <div className="p-6 max-w-7xl mx-auto transition-colors duration-500">
       <motion.div
-        className={`rounded-xl shadow-lg p-8 mb-8 transition-colors duration-500 ${theme === 'dark' ? 'bg-meta-gray-900 border border-meta-gray-800' : 'bg-white border border-gray-200'}`}
+        className={`rounded-xl shadow-lg p-8 mb-8 transition-colors duration-500`}
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -103,15 +101,15 @@ const TalentSearch = () => {
       </motion.div>
       {/* Results Table */}
       <motion.div
-        className={`rounded-xl shadow-lg p-8 transition-colors duration-500 ${theme === 'dark' ? 'bg-meta-gray-900 border border-meta-gray-800' : 'bg-white border border-gray-200'}`}
+        className={`rounded-xl shadow-lg p-8 transition-colors duration-500`}
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
       >
         <h3 className="text-lg font-semibold mb-4">Results</h3>
         <div className="overflow-x-auto">
-          <table className={`min-w-full divide-y ${theme === 'dark' ? 'divide-meta-gray-700 bg-meta-gray-900 text-white' : 'divide-gray-200 bg-white text-meta-black'}`}>
-            <thead className={theme === 'dark' ? 'bg-meta-gray-800' : 'bg-gray-100'}>
+          <table className={`min-w-full divide-y`}>
+            <thead className={`bg-gray-100`}>
               <tr>
                 <th className="px-4 py-2 text-xs font-medium uppercase">Username</th>
                 <th className="px-4 py-2 text-xs font-medium uppercase">Followers</th>

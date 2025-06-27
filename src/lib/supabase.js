@@ -77,19 +77,19 @@ export const getArticles = async (filters = {}) => {
     .from('articles')
     .select(`
       *,
-      author:users!author_id(email),
       categories:article_category_relations(
         category:article_categories(*)
       )
     `)
-    .eq('status', 'published');
+    .not('published_at', 'is', null)
+    .eq('access', 'public');
 
   if (filters.category) {
     query = query.contains('categories', [{ category: { slug: filters.category } }]);
   }
 
   if (filters.searchTerm) {
-    query = query.or(`judul.ilike.%${filters.searchTerm}%,excerpt.ilike.%${filters.searchTerm}%`);
+    query = query.or(`title.ilike.%${filters.searchTerm}%,excerpt.ilike.%${filters.searchTerm}%`);
   }
 
   const { data, error } = await query.order('published_at', { ascending: false });

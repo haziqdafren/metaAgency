@@ -1,15 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense, lazy } from 'react';
 import { Link } from 'react-router-dom';
 import { Upload, Book, Users, TrendingUp, UserCheck, Gem, DollarSign, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Line } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
-import { supabase } from '../../lib/supabase';
 import Button from '../../components/common/Button';
 import useAuthStore from '../../store/authStore';
-import useThemeStore from '../../store/themeStore';
+import { supabase } from '../../lib/supabase';
+import { Chart, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
+Chart.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
-ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
+const LazyLine = lazy(() => import('react-chartjs-2').then(mod => ({ default: mod.Line })));
 
 const cardVariants = {
   hidden: { opacity: 0, y: 30 },
@@ -18,7 +17,6 @@ const cardVariants = {
 
 const AdminDashboard = () => {
   const { profile } = useAuthStore();
-  const { theme } = useThemeStore();
   const [stats, setStats] = useState({
     totalCreators: 0,
     activeCreators: 0,
@@ -33,9 +31,9 @@ const AdminDashboard = () => {
     fetchDashboardData();
   }, []);
 
-    const fetchDashboardData = async () => {
+  const fetchDashboardData = async () => {
     setLoading(true);
-      try {
+    try {
       // Total creators & active creators
       const { count: totalCreators } = await supabase
         .from('creators')
@@ -95,15 +93,15 @@ const AdminDashboard = () => {
           date: new Date(change.changed_at).toLocaleDateString('id-ID'),
         }))
       );
-      } catch (err) {
+    } catch (err) {
       // handle error
-      } finally {
-        setLoading(false);
-      }
-    };
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className={`p-6 max-w-7xl mx-auto transition-colors duration-500 ${theme === 'dark' ? 'bg-meta-black text-white' : 'bg-gray-50 text-meta-black'}`}>
+    <div className="p-6 max-w-7xl mx-auto transition-colors duration-500 bg-gray-50 text-meta-black">
       <motion.h1
         className="text-3xl font-bold mb-2 text-meta-blue"
         initial={{ opacity: 0, y: -20 }}
@@ -126,22 +124,22 @@ const AdminDashboard = () => {
           {
             label: 'Total Creators',
             value: stats.totalCreators,
-            icon: <UserCheck className="w-7 h-7 text-meta-blue" />, color: theme === 'dark' ? 'bg-meta-gray-900 text-white border border-meta-gray-800' : 'bg-blue-50 text-meta-black',
+            icon: <UserCheck className="w-7 h-7 text-meta-blue" />, color: 'bg-blue-50 text-meta-black',
           },
           {
             label: 'Active Creators',
             value: stats.activeCreators,
-            icon: <Users className="w-7 h-7 text-green-600" />, color: theme === 'dark' ? 'bg-meta-gray-900 text-white border border-meta-gray-800' : 'bg-green-50 text-meta-black',
+            icon: <Users className="w-7 h-7 text-green-600" />, color: 'bg-green-50 text-meta-black',
           },
           {
             label: 'Total Diamonds',
             value: stats.totalDiamonds,
-            icon: <Gem className="w-7 h-7 text-purple-600" />, color: theme === 'dark' ? 'bg-meta-gray-900 text-white border border-meta-gray-800' : 'bg-purple-50 text-meta-black',
+            icon: <Gem className="w-7 h-7 text-purple-600" />, color: 'bg-purple-50 text-meta-black',
           },
           {
             label: 'Total Bonuses',
             value: `Rp ${stats.totalBonuses.toLocaleString('id-ID')}`,
-            icon: <DollarSign className="w-7 h-7 text-yellow-500" />, color: theme === 'dark' ? 'bg-meta-gray-900 text-white border border-meta-gray-800' : 'bg-yellow-50 text-meta-black',
+            icon: <DollarSign className="w-7 h-7 text-yellow-500" />, color: 'bg-yellow-50 text-meta-black',
           },
         ].map((card, i) => (
         <motion.div
@@ -168,7 +166,7 @@ const AdminDashboard = () => {
       </div>
       {/* Diamonds Trend Chart */}
         <motion.div
-        className={`rounded-xl shadow p-6 mb-10 transition-colors duration-500 ${theme === 'dark' ? 'bg-meta-gray-900 border border-meta-gray-800' : 'bg-white border border-gray-200'}`}
+        className={`rounded-xl shadow p-6 mb-10 transition-colors duration-500 bg-white border border-gray-200`}
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
@@ -177,43 +175,44 @@ const AdminDashboard = () => {
           <TrendingUp className="w-6 h-6 text-meta-blue mr-2" />
           <span className="font-semibold text-lg">Diamonds Trend (Last 6 Months)</span>
         </div>
-        <Line
-          data={{
-            labels: diamondsTrend.labels,
-            datasets: [
-              {
-                label: 'Diamonds',
-                data: diamondsTrend.data,
-                borderColor: theme === 'dark' ? '#6366f1' : '#6366f1',
-                backgroundColor: theme === 'dark' ? 'rgba(99,102,241,0.15)' : 'rgba(99,102,241,0.1)',
-                tension: 0.4,
-                fill: true,
-                pointRadius: 4,
-                pointHoverRadius: 7,
+        <Suspense fallback={<div>Loading chart...</div>}>
+          <LazyLine
+            data={{
+              labels: diamondsTrend.labels,
+              datasets: [
+                {
+                  label: 'Diamonds',
+                  data: diamondsTrend.data,
+                  borderColor: '#6366f1',
+                  backgroundColor: 'rgba(99,102,241,0.1)',
+                  tension: 0.4,
+                  fill: true,
+                  pointRadius: 4,
+                  pointHoverRadius: 7,
+                },
+              ],
+            }}
+            options={{
+              responsive: true,
+              plugins: {
+                legend: { display: false },
+                tooltip: { enabled: true },
               },
-            ],
-          }}
-          options={{
-            responsive: true,
-            plugins: {
-              legend: { display: false },
-              tooltip: { enabled: true },
-            },
-            scales: {
-              x: { grid: { display: false }, ticks: { color: theme === 'dark' ? '#cbd5e1' : '#666' } },
-              y: { grid: { color: theme === 'dark' ? '#334155' : '#e0e7ef' }, beginAtZero: true, ticks: { color: theme === 'dark' ? '#cbd5e1' : '#666' } },
-            },
-            animation: {
-              duration: 1200,
-              easing: 'easeInOutQuart',
-            },
-          }}
-          height={120}
-        />
+              scales: {
+                x: { grid: { display: false }, ticks: { color: '#666' } },
+                y: { grid: { color: '#e0e7ef' }, beginAtZero: true, ticks: { color: '#666' } },
+              },
+              animation: {
+                duration: 1200,
+                easing: 'easeInOutQuart',
+              },
+            }}
+          />
+        </Suspense>
         </motion.div>
       {/* Recent Activity */}
       <motion.div
-        className={`rounded-xl shadow p-6 mb-10 transition-colors duration-500 ${theme === 'dark' ? 'bg-meta-gray-900 border border-meta-gray-800' : 'bg-white border border-gray-200'}`}
+        className={`rounded-xl shadow p-6 mb-10 transition-colors duration-500 bg-white border border-gray-200`}
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
@@ -256,19 +255,19 @@ const AdminDashboard = () => {
             to: '/admin/upload',
             icon: <Upload className="w-10 h-10 mb-2 text-meta-blue" />,
             label: 'Upload Performance',
-            color: theme === 'dark' ? 'bg-meta-gray-900 text-white border border-meta-gray-800' : 'bg-blue-50 text-meta-black',
+            color: 'bg-blue-50 text-meta-black',
           },
           {
             to: '/admin/bonus',
             icon: <Book className="w-10 h-10 mb-2 text-purple-700" />,
             label: 'Bonus Calculator',
-            color: theme === 'dark' ? 'bg-meta-gray-900 text-white border border-meta-gray-800' : 'bg-purple-50 text-meta-black',
+            color: 'bg-purple-50 text-meta-black',
           },
           {
             to: '/admin/talents',
             icon: <Users className="w-10 h-10 mb-2 text-green-700" />,
             label: 'Talent Management',
-            color: theme === 'dark' ? 'bg-meta-gray-900 text-white border border-meta-gray-800' : 'bg-green-50 text-meta-black',
+            color: 'bg-green-50 text-meta-black',
           },
         ].map((card, i) => (
           <motion.div
