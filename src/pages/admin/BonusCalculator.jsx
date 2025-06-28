@@ -1,7 +1,8 @@
-import BonusCalculator from '../../components/admin/BonusCalculator';
+import React from 'react';
+import { BonusCalculatorWithNav } from '../../components/admin/BonusCalculator';
 
-const BonusCalculatorPage = () => {
-  return <BonusCalculator />;
+const BonusCalculator = () => {
+  return <BonusCalculatorWithNav />;
 };
- 
-export default BonusCalculatorPage; 
+
+export default BonusCalculator; 

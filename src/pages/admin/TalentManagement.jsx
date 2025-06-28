@@ -1,7 +1,8 @@
-import TalentManagement from '../../components/admin/TalentManagement';
+import React from 'react';
+import TalentManagementRefactored from '../../components/admin/TalentManagement/TalentManagementRefactored';
 
-const TalentManagementPage = () => {
-  return <TalentManagement />;
+const TalentManagement = () => {
+  return <TalentManagementRefactored />;
 };
 
-export default TalentManagementPage; 
+export default TalentManagement; 

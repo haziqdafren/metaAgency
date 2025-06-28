@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 const useSidebarStore = create((set) => ({
-  isOpen: true, // Default to open
+  isOpen: false, // Default to closed (icons only)
   toggleSidebar: () => set((state) => ({ isOpen: !state.isOpen})),
 }));
 
