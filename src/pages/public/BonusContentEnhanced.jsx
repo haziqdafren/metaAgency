@@ -834,65 +834,7 @@ const BonusContentEnhanced = () => {
         </motion.div>
       )}
 
-      {/* Tools & Resources Section */}
-      <motion.section
-        variants={sectionVariants}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, amount: 0.2 }}
-        className={`mb-8 p-6 rounded-xl shadow-lg ${theme === 'dark' ? 'bg-meta-gray-900 border border-meta-gray-800' : 'bg-white border border-gray-200'}`}
-      >
-        <h2 className="text-2xl font-semibold mb-6">Tools & Resources for Creators</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <motion.div
-            variants={itemVariants}
-            whileHover={{ scale: 1.02 }}
-            className={`p-5 rounded-lg border flex flex-col items-center text-center transition-all duration-300 cursor-pointer ${theme === 'dark' ? 'bg-meta-gray-800 border-meta-gray-700 hover:bg-meta-gray-700' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`}
-          >
-            <Calculator className="w-8 h-8 text-meta-blue mb-3" />
-            <h3 className="text-lg font-medium mb-2">Bonus Calculator</h3>
-            <p className={`text-sm ${theme === 'dark' ? 'text-meta-gray-400' : 'text-meta-gray-600'}`}>
-              Calculate your potential bonus earnings
-            </p>
-          </motion.div>
-
-          <motion.div
-            variants={itemVariants}
-            whileHover={{ scale: 1.02 }}
-            className={`p-5 rounded-lg border flex flex-col items-center text-center transition-all duration-300 cursor-pointer ${theme === 'dark' ? 'bg-meta-gray-800 border-meta-gray-700 hover:bg-meta-gray-700' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`}
-          >
-            <Clock className="w-8 h-8 text-purple-500 mb-3" />
-            <h3 className="text-lg font-medium mb-2">Streaming Schedule</h3>
-            <p className={`text-sm ${theme === 'dark' ? 'text-meta-gray-400' : 'text-meta-gray-600'}`}>
-              Optimize your live streaming times
-            </p>
-          </motion.div>
-
-          <motion.div
-            variants={itemVariants}
-            whileHover={{ scale: 1.02 }}
-            className={`p-5 rounded-lg border flex flex-col items-center text-center transition-all duration-300 cursor-pointer ${theme === 'dark' ? 'bg-meta-gray-800 border-meta-gray-700 hover:bg-meta-gray-700' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`}
-          >
-            <TrendingUp className="w-8 h-8 text-green-500 mb-3" />
-            <h3 className="text-lg font-medium mb-2">Performance Tips</h3>
-            <p className={`text-sm ${theme === 'dark' ? 'text-meta-gray-400' : 'text-meta-gray-600'}`}>
-              Strategies to improve your ranking
-            </p>
-          </motion.div>
-
-          <motion.div
-            variants={itemVariants}
-            whileHover={{ scale: 1.02 }}
-            className={`p-5 rounded-lg border flex flex-col items-center text-center transition-all duration-300 cursor-pointer ${theme === 'dark' ? 'bg-meta-gray-800 border-meta-gray-700 hover:bg-meta-gray-700' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'}`}
-          >
-            <Book className="w-8 h-8 text-red-500 mb-3" />
-            <h3 className="text-lg font-medium mb-2">Creator Guides</h3>
-            <p className={`text-sm ${theme === 'dark' ? 'text-meta-gray-400' : 'text-meta-gray-600'}`}>
-              Learn from successful creators
-            </p>
-          </motion.div>
-        </div>
-      </motion.section>
+     
     </motion.div>
   );
 };
