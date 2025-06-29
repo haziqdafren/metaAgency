@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronUp, Home, ArrowLeft } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import useAuthStore from '../../store/authStore';
 
 const AdminLayout = ({ children, title, showBackButton = false, compact = false }) => {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { signOut, profile } = useAuthStore();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -16,6 +18,23 @@ const AdminLayout = ({ children, title, showBackButton = false, compact = false 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    // Session timeout logic (10 minutes = 600000 ms)
+    const checkSession = () => {
+      const sessionStart = localStorage.getItem('adminSessionStart');
+      if (profile && profile.role === 'admin' && sessionStart) {
+        const now = Date.now();
+        if (now - parseInt(sessionStart, 10) > 600000) {
+          signOut();
+          navigate('/auth/login', { replace: true });
+        }
+      }
+    };
+    checkSession();
+    const interval = setInterval(checkSession, 30000); // check every 30s
+    return () => clearInterval(interval);
+  }, [profile, signOut, navigate]);
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });

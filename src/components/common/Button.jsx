@@ -13,6 +13,7 @@ const Button = ({
   icon: Icon,
   className = '',
   color = '', // optional accent color
+  as: Component = 'button', // Support polymorphic rendering
   ...props
 }) => {
   const { theme } = useThemeStore();
@@ -42,8 +43,10 @@ const Button = ({
 
   const classes = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${widthClass} ${colorClass} ${className}`;
 
+  const MotionComponent = motion(Component);
+
   return (
-    <motion.button
+    <MotionComponent
       whileTap={{ scale: 0.97 }}
       whileHover={
         variant === 'primary'
@@ -66,7 +69,7 @@ const Button = ({
           {children}
         </>
       )}
-    </motion.button>
+    </MotionComponent>
   );
 };
 

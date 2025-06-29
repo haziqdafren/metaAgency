@@ -64,19 +64,51 @@ const useAuthStore = create((set, get) => ({
 
   // Sign in
   signIn: async (email, password) => {
-    // Dummy admin login for testing
-    if (email === 'admin@metaagency.id' && password === 'admin123') {
-      set({
-        user: { id: 'dummy-admin', email },
-        profile: { role: 'admin', nama: 'Admin Dummy', email },
-        loading: false,
-        error: null,
-      });
-      return { success: true };
-    }
     try {
       set({ loading: true, error: null });
       
+      // First check if it's an admin user
+      const { data: adminData, error: adminError } = await supabase
+        .from('admins')
+        .select('*')
+        .eq('email', email)
+        .single();
+
+      if (adminData) {
+        // Admin user found - check password
+        if (adminData.password_hash === password) {
+          // Create a mock user object for admin
+          const adminUser = {
+            id: adminData.id,
+            email: adminData.email,
+            role: 'admin'
+          };
+          
+          const adminProfile = {
+            id: adminData.id,
+            user_id: adminData.id,
+            name: adminData.name,
+            email: adminData.email,
+            role: 'admin',
+            created_at: adminData.created_at
+          };
+
+          // Set session timestamp for admin login
+          localStorage.setItem('adminSessionStart', Date.now().toString());
+
+          set({ 
+            user: adminUser, 
+            profile: adminProfile, 
+            loading: false 
+          });
+          
+          return { success: true };
+        } else {
+          throw new Error('Invalid password');
+        }
+      }
+
+      // If not admin, try regular Supabase auth
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -121,6 +153,8 @@ const useAuthStore = create((set, get) => ({
   signOut: async () => {
     try {
       set({ loading: true });
+      // Remove admin session timestamp on sign out
+      localStorage.removeItem('adminSessionStart');
       const { error } = await supabase.auth.signOut();
       
       if (error) throw error;

@@ -16,18 +16,46 @@ const ArticleDetail = () => {
   useEffect(() => {
     const fetchArticle = async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('articles')
-        .select(`
-          *,
-          categories:article_category_relations(
-            category:article_categories(*)
-          )
-        `)
-        .eq('slug', slug)
-        .not('published_at', 'is', null)
-        .eq('access', 'public')
-        .single();
+      let data = null;
+      let error = null;
+
+      // Try to fetch by slug first
+      if (slug) {
+        const result = await supabase
+          .from('articles')
+          .select(`
+            *,
+            categories:article_category_relations(
+              category:article_categories(*)
+            )
+          `)
+          .eq('slug', slug)
+          .not('published_at', 'is', null)
+          .eq('access', 'public')
+          .single();
+        
+        data = result.data;
+        error = result.error;
+      }
+
+      // If slug fetch failed, try by ID (fallback for articles without slugs)
+      if (!data && slug) {
+        const result = await supabase
+          .from('articles')
+          .select(`
+            *,
+            categories:article_category_relations(
+              category:article_categories(*)
+            )
+          `)
+          .eq('id', slug)
+          .not('published_at', 'is', null)
+          .eq('access', 'public')
+          .single();
+        
+        data = result.data;
+        error = result.error;
+      }
 
       if (error || !data) {
         setError('Article not found.');

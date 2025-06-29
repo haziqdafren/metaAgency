@@ -298,9 +298,12 @@ const EnhancedArticlesTable = ({
           variant: 'ghost',
           onClick: (article) => {
             if (article.published_at) {
-              window.open(`/articles/${article.slug}`, '_blank');
+              // Use slug if available, otherwise use ID as fallback
+              const articleUrl = `/articles/${article.slug || article.id}`;
+              window.open(articleUrl, '_blank');
             } else {
-              console.log('Preview draft:', article.title);
+              // For draft articles, show preview modal or notification
+              alert(`Preview for draft: "${article.title}"\n\nThis article is not published yet. You can edit it to add content and publish it.`);
             }
           }
         },
@@ -324,11 +327,28 @@ const EnhancedArticlesTable = ({
           icon: <ExternalLink className="w-4 h-4" />,
           title: 'Share Article',
           variant: 'ghost',
-          onClick: (article) => {
+          onClick: async (article) => {
             if (article.published_at) {
-              const url = `${window.location.origin}/articles/${article.slug}`;
-              navigator.clipboard.writeText(url);
-              console.log('Article URL copied to clipboard');
+              // Use slug if available, otherwise use ID as fallback
+              const articlePath = article.slug || article.id;
+              const url = `${window.location.origin}/articles/${articlePath}`;
+              
+              try {
+                await navigator.clipboard.writeText(url);
+                // Show success notification
+                alert(`✅ Article URL copied to clipboard!\n\n"${article.title}"\n\n${url}`);
+              } catch (error) {
+                // Fallback for browsers that don't support clipboard API
+                const textArea = document.createElement('textarea');
+                textArea.value = url;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert(`✅ Article URL copied to clipboard!\n\n"${article.title}"\n\n${url}`);
+              }
+            } else {
+              alert(`⚠️ Cannot share unpublished article\n\n"${article.title}" is still a draft. Please publish it first to share.`);
             }
           }
         }
