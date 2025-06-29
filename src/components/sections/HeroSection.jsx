@@ -121,10 +121,10 @@ const HeroSection = () => {
               <span>Daftar Sekarang</span>
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
-            <button className="group btn btn-secondary px-8 py-4 text-lg flex items-center space-x-2">
+            {/* <button className="group btn btn-secondary px-8 py-4 text-lg flex items-center space-x-2">
               <Play className="w-5 h-5" />
               <span>Lihat Video</span>
-            </button>
+            </button> */}
           </motion.div>
 
           {/* Animated Stats */}
