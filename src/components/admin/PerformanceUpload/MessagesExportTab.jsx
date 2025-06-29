@@ -6,6 +6,7 @@ import Textarea from '../../common/Textarea';
 import CompactCard from '../CompactCard';
 import { supabase, findOrCreateCreator } from '../../../lib/supabase';
 import EnhancedPerformanceTable from './EnhancedPerformanceTable';
+import { useNavigate } from 'react-router-dom';
 
 const MessagesExportTab = ({ uploadedData, messages, onMessagesGenerated, onSaveComplete }) => {
   const [personalizedMessages, setPersonalizedMessages] = useState([]);
@@ -26,6 +27,9 @@ const MessagesExportTab = ({ uploadedData, messages, onMessagesGenerated, onSave
   const [saveError, setSaveError] = useState('');
   const [saveSuccess, setSaveSuccess] = useState('');
   const [isSaved, setIsSaved] = useState(false);
+  const [debugLogs, setDebugLogs] = useState([]);
+
+  const navigate = useNavigate();
 
   // Utility to get value by possible keys (case-insensitive, trimmed)
   const getValueByKeys = (obj, possibleKeys) => {
@@ -239,55 +243,44 @@ _Keep up the amazing work!_`
     }
   };
 
+  // Helper to add a debug log
+  const addDebugLog = (msg, type = 'info') => {
+    setDebugLogs(logs => [...logs, { msg, type, ts: new Date().toLocaleTimeString() }]);
+  };
+
   const saveToDatabase = async () => {
-    if (!uploadedData || uploadedData.length === 0) {
-      setSaveError('No data to save');
+    if (!filteredData || filteredData.length === 0) {
+      setSaveError('No eligible creators to save');
+      addDebugLog('No eligible creators to save', 'error');
       return;
     }
-    for (let i = 0; i < Math.min(5, uploadedData.length); i++) {
-      const row = uploadedData[i];
-      const norm = normalizeCreator(row);
-      console.log(`[SAVE] Row ${i}:`);
-      console.log('  Raw Valid go LIVE days:', row['Valid go LIVE days']);
-      console.log('  Raw LIVE duration:', row['LIVE duration']);
-      console.log('  Raw Creator Network manager:', row['Creator Network manager']);
-      console.log('  Normalized validDays:', norm.validDays);
-      console.log('  Normalized liveDuration:', norm.liveDuration);
-      console.log('  Normalized manager:', norm.manager);
-    }
-
-    const filteredData = uploadedData.filter(creator => {
-      const managerValue = normalizeCreator(creator).manager;
-      return managerValue && managerValue.toLowerCase().includes('mediaentertainmenttalentagency@gmail.com');
-    });
-    const dataToUse = filteredData.length > 0 ? filteredData : uploadedData;
-    console.log(`Saving ${dataToUse.length} creators (filtered: ${filteredData.length}, total: ${uploadedData.length})`);
 
     setSaveLoading(true);
     setSaveError('');
     setSaveSuccess('');
-    setSaveProgress({ current: 0, total: dataToUse.length });
+    setSaveProgress({ current: 0, total: filteredData.length });
+    setDebugLogs([]);
 
-    // Extract period, year, and month from uploaded data
-    const period = normalizeCreator(dataToUse[0]).period || '';
+    // Extract period, year, and month from filtered data
+    const period = filteredData[0]?.period || '';
     const [year, month] = period.split('-').slice(0, 2);
 
+    let successfulSaves = 0;
+
     try {
-      // Save upload context
       await supabase.from('creator_data_uploads').insert({
         period,
         year: parseInt(year),
         month: parseInt(month),
         uploaded_at: new Date().toISOString(),
-        creators_count: dataToUse.length
+        creators_count: filteredData.length
       });
+      addDebugLog(`Inserted upload context for period ${period}`);
 
-      // Process each creator using centralized management
-      for (const [idx, creator] of dataToUse.entries()) {
+      for (const [idx, creator] of filteredData.entries()) {
         try {
           const normalizedCreator = normalizeCreator(creator);
-          
-          // Use centralized creator management
+          addDebugLog(`[SAVE] Processing #${idx + 1}: ${normalizedCreator.username_tiktok} (${normalizedCreator.creator_id})`);
           const { creator: dbCreator, error: creatorError } = await findOrCreateCreator({
             creator_id: normalizedCreator.creator_id,
             username_tiktok: normalizedCreator.username_tiktok,
@@ -301,18 +294,18 @@ _Keep up the amazing work!_`
             link_tiktok: normalizedCreator.link_tiktok,
             nomor_wa: normalizedCreator.nomor_wa
           });
-          
+          addDebugLog(`[SAVE] findOrCreateCreator result: ${dbCreator ? dbCreator.id : 'null'} ${creatorError ? 'ERROR: ' + creatorError : ''}`);
+
           if (creatorError) {
-            console.error(`Error managing creator ${normalizedCreator.username_tiktok}:`, creatorError);
+            addDebugLog(`Error managing creator ${normalizedCreator.username_tiktok}: ${creatorError}`, 'error');
             continue;
           }
-          
-          if (!dbCreator) {
-            console.error(`Failed to get/create creator for ${normalizedCreator.username_tiktok}`);
+
+          if (!dbCreator || !dbCreator.id) {
+            addDebugLog(`[SAVE] Failed to get/create creator or missing dbCreator.id for ${normalizedCreator.username_tiktok}`, 'error');
             continue;
           }
-          
-          // Parse live duration to extract hours
+
           let liveHours = 0;
           if (normalizedCreator.liveDuration) {
             const durationStr = String(normalizedCreator.liveDuration);
@@ -326,17 +319,16 @@ _Keep up the amazing work!_`
             } else if (minutesMatch) {
               liveHours = parseInt(minutesMatch[1]) / 60;
             } else {
-              // Try to parse as number
               const numMatch = durationStr.match(/(\d+(?:\.\d+)?)/);
               if (numMatch) {
                 liveHours = parseFloat(numMatch[1]);
               }
             }
           }
-          
+
           // Insert performance data using the internal database ID (foreign key constraint requirement)
           const perfData = {
-            creator_id: dbCreator.id, // Use internal database ID for foreign key relationship
+            creator_id: dbCreator.id,
             period_month: parseInt(month),
             period_year: parseInt(year),
             diamonds: normalizedCreator.diamonds,
@@ -344,41 +336,42 @@ _Keep up the amazing work!_`
             live_hours: liveHours,
             new_followers: normalizedCreator.newFollowers,
             diamonds_vs_last_month: parseFloat((normalizedCreator.diamondsVsLastMonth || '').replace('%','').replace('+','')),
-            live_streams: normalizedCreator.liveStreams,
-            subscription_revenue: normalizedCreator.subscriptionRevenue,
+            hours_vs_last_month: parseFloat((normalizedCreator.durationVsLastMonth || '').replace('%','').replace('+','')),
             raw_data: creator
           };
-          
+
+          addDebugLog(`[SAVE] Attempting to insert performance for: ${dbCreator.id} ${normalizedCreator.username_tiktok}`);
           const { error: perfError } = await supabase
             .from('creator_performance')
             .insert(perfData);
-          
           if (perfError) {
-            console.error(`Performance save error for ${normalizedCreator.username_tiktok}:`, perfError);
+            addDebugLog(`[SAVE] Performance save error: ${perfError.message}`, 'error');
+          } else {
+            addDebugLog(`[SAVE] Performance data inserted for: ${dbCreator.id} ${normalizedCreator.username_tiktok}`);
+            successfulSaves++;
           }
-          
+
         } catch (error) {
-          console.error(`Error processing ${creator['Creator\'s username'] || creator.username_tiktok}:`, error);
+          addDebugLog(`[SAVE] Error processing ${creator.username_tiktok}: ${error.message}`, 'error');
         }
-        
+
         setSaveProgress(prev => ({ ...prev, current: idx + 1 }));
       }
-      
-      setSaveSuccess(`🎉 Successfully saved ${dataToUse.length} creators to database!`);
+
+      setSaveSuccess(`🎉 Successfully saved ${successfulSaves} creators to database!`);
       setIsSaved(true);
-      showNotification(`Successfully saved ${dataToUse.length} creators to database!`, 'success');
-      
+      showNotification(`Successfully saved ${successfulSaves} creators to database!`, 'success');
+
       if (onSaveComplete) {
         onSaveComplete();
       }
-      
-      // Clear success message after delay
+
       setTimeout(() => {
         setSaveSuccess('');
       }, 5000);
-      
+
     } catch (error) {
-      console.error('Save error:', error);
+      addDebugLog('Save error: ' + error.message, 'error');
       setSaveError('Error saving to database: ' + error.message);
       showNotification('Error saving to database: ' + error.message, 'error');
     } finally {
@@ -496,10 +489,7 @@ _Keep up the amazing work!_`
       <div className="text-center py-12">
         <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
         <h3 className="text-lg font-medium text-gray-900 mb-2">No Eligible Creators</h3>
-        <p className="text-gray-500 mb-6">No creators matched the manager filter. Please check your upload.</p>
-        <Button onClick={() => window.location.reload()} variant="primary">
-          Go to Upload Tab
-        </Button>
+        <p className="text-gray-500 mb-6">No creators matched the manager filter. Please upload performance data first to generate messages.</p>
       </div>
     );
   }
@@ -563,14 +553,14 @@ _Keep up the amazing work!_`
                 <div>
                   <h4 className="font-semibold text-blue-900 mb-1">Ready to Save?</h4>
                   <p className="text-sm text-blue-700">
-                    Save {uploadedData.length} creators to database for permanent storage and future access.
+                    Save {filteredData.length} creators to database for permanent storage and future access.
                   </p>
                 </div>
                 <Button 
                   onClick={saveToDatabase} 
                   variant="primary" 
                   loading={saveLoading}
-                  disabled={uploadedData.length === 0}
+                  disabled={filteredData.length === 0}
                   size="lg"
                   className="whitespace-nowrap"
                 >
@@ -585,7 +575,7 @@ _Keep up the amazing work!_`
                 <div>
                   <h4 className="font-semibold text-green-900">✅ Saved Successfully!</h4>
                   <p className="text-sm text-green-700">
-                    {uploadedData.length} creators have been saved to the database.
+                    {filteredData.length} creators have been saved to the database.
                   </p>
                 </div>
               </div>
