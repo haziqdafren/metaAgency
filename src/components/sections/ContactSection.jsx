@@ -23,8 +23,24 @@ const ContactSection = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Handle form submission here
-    console.log('Form submitted:', formData);
+    
+    // Format the message in Bahasa Indonesia
+    const whatsappMessage = `Halo, saya ${formData.name}
+Email: ${formData.email}
+Subjek: ${formData.subject}
+Pesan: ${formData.message}`;
+
+    // Encode the message for URL
+    const encodedMessage = encodeURIComponent(whatsappMessage);
+    
+    // WhatsApp number (you can change this to your actual WhatsApp number)
+    // const whatsappNumber = '6282383616024'; // Using the phone number from contactInfo
+    
+    // Create WhatsApp URL
+    const whatsappUrl = `https://wa.me/${62895360039764}?text=${encodedMessage}`;
+    
+    // Open WhatsApp in a new tab
+    window.open(whatsappUrl, '_blank');
   };
 
   const contactInfo = [
@@ -137,7 +153,7 @@ const ContactSection = () => {
                     className="w-full flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-meta-blue to-cyan-500 text-white rounded-lg font-semibold hover:opacity-90 transition-opacity"
                   >
                     <Send className="w-5 h-5" />
-                    <span>Kirim Pesan</span>
+                    <span>Kirim via WhatsApp</span>
                   </button>
                 </form>
               </div>
@@ -192,7 +208,7 @@ const ContactSection = () => {
                   <h3 className={`text-lg font-semibold mb-4 transition-colors duration-500 ${theme === 'dark' ? 'text-white' : 'text-meta-black'}`}>Social Media</h3>
                   <div className="flex space-x-4">
                     <a
-                      href="https://instagram.com/metaagency"
+                      href="https://instagram.com/@metaagencyofficial"
                       target="_blank"
                       rel="noopener noreferrer"
                       className={`p-3 rounded-lg border transition-colors duration-500 font-medium text-sm ${theme === 'dark' ? 'bg-meta-gray-900/50 border-meta-gray-800 text-white hover:bg-meta-gray-800' : 'bg-white border-meta-gray-200 text-meta-black hover:bg-meta-gray-100'}`}
@@ -200,29 +216,21 @@ const ContactSection = () => {
                       Instagram
                     </a>
                     <a
-                      href="https://facebook.com/metaagency"
+                      href="https://tiktok.com/@metaagencyofficial"
                       target="_blank"
                       rel="noopener noreferrer"
                       className={`p-3 rounded-lg border transition-colors duration-500 font-medium text-sm ${theme === 'dark' ? 'bg-meta-gray-900/50 border-meta-gray-800 text-white hover:bg-meta-gray-800' : 'bg-white border-meta-gray-200 text-meta-black hover:bg-meta-gray-100'}`}
                     >
-                      Facebook
+                      Tiktok
                     </a>
                     <a
-                      href="https://twitter.com/metaagency"
+                      href="https://wa.me/62895360039764"
                       target="_blank"
                       rel="noopener noreferrer"
                       className={`p-3 rounded-lg border transition-colors duration-500 font-medium text-sm ${theme === 'dark' ? 'bg-meta-gray-900/50 border-meta-gray-800 text-white hover:bg-meta-gray-800' : 'bg-white border-meta-gray-200 text-meta-black hover:bg-meta-gray-100'}`}
                     >
-                      Twitter
-                    </a>
-                    <a
-                      href="https://youtube.com/metaagency"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`p-3 rounded-lg border transition-colors duration-500 font-medium text-sm ${theme === 'dark' ? 'bg-meta-gray-900/50 border-meta-gray-800 text-white hover:bg-meta-gray-800' : 'bg-white border-meta-gray-200 text-meta-black hover:bg-meta-gray-100'}`}
-                    >
-                      YouTube
-                    </a>
+                      WhatsApp
+                    </a>  
                   </div>
                 </div>
               </motion.div>
