@@ -22,13 +22,28 @@ const ContactPage = () => {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase
-        .from('contact_messages')
-        .insert([formData]);
+      // Format the message in Bahasa Indonesia
+      const whatsappMessage = `Halo, perkenalkan nama saya ${formData.name}, saya ingin menanyakan tentang MetaAgency
+Email: ${formData.email}
+Subjek: ${formData.subject}
+Pesan: ${formData.message}`;
 
-      if (error) throw error;
-
-      showNotification('Pesan Anda telah terkirim. Kami akan segera menghubungi Anda.', 'success');
+      // Encode the message for URL
+      const encodedMessage = encodeURIComponent(whatsappMessage);
+      
+      // WhatsApp number (you can change this to your actual WhatsApp number)
+      // const whatsappNumber = '62895360039764'; // Using the phone number from contactInfo
+      
+      // Create WhatsApp URL
+      const whatsappUrl = `https://wa.me/${62895360039764}?text=${encodedMessage}`;
+      
+      // Show alert before redirecting
+      alert('Terima kasih! Anda akan diarahkan ke WhatsApp untuk langsung berinteraksi kepada admin.');
+      
+      // Open WhatsApp in a new tab
+      window.open(whatsappUrl, '_blank');
+      
+      showNotification('Mengalihkan ke WhatsApp...', 'success');
       setFormData({
         name: '',
         email: '',
@@ -89,8 +104,8 @@ const ContactPage = () => {
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div>
-                    <label htmlFor="name" className={`block text-sm font-medium mb-2 transition-colors duration-500 ${theme === 'dark' ? 'text-meta-gray-300' : 'text-meta-gray-800'}`}>Nama Lengkap</label>
-                    <motion.input
+                    <label htmlFor="name" className={`block text-sm font-medium mb-2 transition-colors duration-500 ${theme === 'dark' ? 'text-meta-gray-300' : 'text-meta-gray-700'}`}>Nama Lengkap</label>
+                    <input
                       type="text"
                       id="name"
                       name="name"
@@ -99,14 +114,12 @@ const ContactPage = () => {
                       required
                       className={`w-full px-4 py-3 rounded-lg border transition-colors duration-500 focus:outline-none focus:ring-2 focus:ring-meta-blue focus:border-transparent ${theme === 'dark' ? 'bg-meta-gray-900 border-meta-gray-800 text-white placeholder-meta-gray-500' : 'bg-white border-meta-gray-200 text-meta-black placeholder-meta-gray-400'}`}
                       placeholder="Masukkan nama lengkap"
-                      whileFocus={{ scale: 1.01, borderColor: "#00bcd4", boxShadow: "0 0 0 2px rgba(0, 188, 212, 0.2)" }}
-                      whileHover={{ borderColor: theme === 'dark' ? "#4b5563" : "#9ca3af" }}
                     />
                   </div>
 
                   <div>
-                    <label htmlFor="email" className={`block text-sm font-medium mb-2 transition-colors duration-500 ${theme === 'dark' ? 'text-meta-gray-300' : 'text-meta-gray-800'}`}>Email</label>
-                    <motion.input
+                    <label htmlFor="email" className={`block text-sm font-medium mb-2 transition-colors duration-500 ${theme === 'dark' ? 'text-meta-gray-300' : 'text-meta-gray-700'}`}>Email</label>
+                    <input
                       type="email"
                       id="email"
                       name="email"
@@ -115,14 +128,12 @@ const ContactPage = () => {
                       required
                       className={`w-full px-4 py-3 rounded-lg border transition-colors duration-500 focus:outline-none focus:ring-2 focus:ring-meta-blue focus:border-transparent ${theme === 'dark' ? 'bg-meta-gray-900 border-meta-gray-800 text-white placeholder-meta-gray-500' : 'bg-white border-meta-gray-200 text-meta-black placeholder-meta-gray-400'}`}
                       placeholder="nama@email.com"
-                      whileFocus={{ scale: 1.01, borderColor: "#00bcd4", boxShadow: "0 0 0 2px rgba(0, 188, 212, 0.2)" }}
-                      whileHover={{ borderColor: theme === 'dark' ? "#4b5563" : "#9ca3af" }}
                     />
                   </div>
 
                   <div>
-                    <label htmlFor="subject" className={`block text-sm font-medium mb-2 transition-colors duration-500 ${theme === 'dark' ? 'text-meta-gray-300' : 'text-meta-gray-800'}`}>Subjek</label>
-                    <motion.input
+                    <label htmlFor="subject" className={`block text-sm font-medium mb-2 transition-colors duration-500 ${theme === 'dark' ? 'text-meta-gray-300' : 'text-meta-gray-700'}`}>Subjek</label>
+                    <input
                       type="text"
                       id="subject"
                       name="subject"
@@ -131,14 +142,12 @@ const ContactPage = () => {
                       required
                       className={`w-full px-4 py-3 rounded-lg border transition-colors duration-500 focus:outline-none focus:ring-2 focus:ring-meta-blue focus:border-transparent ${theme === 'dark' ? 'bg-meta-gray-900 border-meta-gray-800 text-white placeholder-meta-gray-500' : 'bg-white border-meta-gray-200 text-meta-black placeholder-meta-gray-400'}`}
                       placeholder="Masukkan subjek pesan"
-                      whileFocus={{ scale: 1.01, borderColor: "#00bcd4", boxShadow: "0 0 0 2px rgba(0, 188, 212, 0.2)" }}
-                      whileHover={{ borderColor: theme === 'dark' ? "#4b5563" : "#9ca3af" }}
                     />
                   </div>
 
                   <div>
-                    <label htmlFor="message" className={`block text-sm font-medium mb-2 transition-colors duration-500 ${theme === 'dark' ? 'text-meta-gray-300' : 'text-meta-gray-800'}`}>Pesan</label>
-                    <motion.textarea
+                    <label htmlFor="message" className={`block text-sm font-medium mb-2 transition-colors duration-500 ${theme === 'dark' ? 'text-meta-gray-300' : 'text-meta-gray-700'}`}>Pesan</label>
+                    <textarea
                       id="message"
                       name="message"
                       value={formData.message}
@@ -147,8 +156,6 @@ const ContactPage = () => {
                       rows={6}
                       className={`w-full px-4 py-3 rounded-lg border transition-colors duration-500 focus:outline-none focus:ring-2 focus:ring-meta-blue focus:border-transparent ${theme === 'dark' ? 'bg-meta-gray-900 border-meta-gray-800 text-white placeholder-meta-gray-500' : 'bg-white border-meta-gray-200 text-meta-black placeholder-meta-gray-400'}`}
                       placeholder="Tulis pesan Anda di sini..."
-                      whileFocus={{ scale: 1.01, borderColor: "#00bcd4", boxShadow: "0 0 0 2px rgba(0, 188, 212, 0.2)" }}
-                      whileHover={{ borderColor: theme === 'dark' ? "#4b5563" : "#9ca3af" }}
                     />
                   </div>
 
@@ -158,7 +165,7 @@ const ContactPage = () => {
                     className="w-full btn btn-primary py-3 px-4 text-base font-medium flex items-center justify-center space-x-2"
                   >
                     <Send className="w-5 h-5" />
-                    <span>{isLoading ? 'Mengirim...' : 'Kirim Pesan'}</span>
+                    <span>{isLoading ? 'Mengalihkan...' : 'Kirim via WhatsApp'}</span>
                   </button>
                 </form>
               </div>
@@ -236,10 +243,9 @@ const ContactPage = () => {
                 <h2 className={`text-2xl font-bold mb-6 transition-colors duration-500 ${theme === 'dark' ? 'text-white' : 'text-meta-black'}`}>Media Sosial</h2>
                 <div className="flex space-x-4">
                   {[
-                    { name: 'Instagram', href: 'https://instagram.com/metaagency' },
-                    { name: 'Facebook', href: 'https://facebook.com/metaagency' },
-                    { name: 'Twitter', href: 'https://twitter.com/metaagency' },
-                    { name: 'YouTube', href: 'https://youtube.com/metaagency' },
+                    { name: 'Instagram', href: 'https://instagram.com/@metaagencyofficial' },
+                    { name: 'Tiktok', href: 'https://tiktok.com/@metaagencyofficial' },
+                    { name: 'WhatsApp', href: 'https://wa.me/62895360039764' },
                   ].map((social) => (
                     <a
                       key={social.name}
