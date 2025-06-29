@@ -25,7 +25,7 @@ const ContactSection = () => {
     e.preventDefault();
     
     // Format the message in Bahasa Indonesia
-    const whatsappMessage = `Halo, saya ${formData.name}
+    const whatsappMessage = `Halo, perkenalkan nama saya ${formData.name}, saya ingin menanyakan tentang MetaAgency
 Email: ${formData.email}
 Subjek: ${formData.subject}
 Pesan: ${formData.message}`;
@@ -38,7 +38,9 @@ Pesan: ${formData.message}`;
     
     // Create WhatsApp URL
     const whatsappUrl = `https://wa.me/${62895360039764}?text=${encodedMessage}`;
-    
+    // 6281273307660
+    // Show alert before redirecting
+    alert('Terima kasih! Anda akan diarahkan ke WhatsApp untuk langsung berinteraksi kepada admin.');
     // Open WhatsApp in a new tab
     window.open(whatsappUrl, '_blank');
   };
