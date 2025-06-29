@@ -69,75 +69,135 @@ export const findOrCreateCreator = async (creatorData) => {
   try {
     let dbCreator = null;
     
+    // CRITICAL: Ensure we have either TikTok Creator ID or username
+    if (!creator_id && !username_tiktok) {
+      throw new Error('Must provide either creator_id or username_tiktok');
+    }
+    
     // Step 1: Try to find by TikTok Creator ID (most reliable)
     if (creator_id) {
-      const { data: foundById, error: errById } = await supabase
-        .from('creators')
-        .select('*')
-        .eq('creator_id', creator_id)
-        .single();
-      
-      if (foundById && !errById) {
-        dbCreator = foundById;
-        console.log(`✅ Found creator by TikTok ID: ${creator_id}`);
+      try {
+        const { data: foundById, error: errById } = await supabase
+          .from('creators')
+          .select('*')
+          .eq('creator_id', creator_id)
+          .maybeSingle(); // Use maybeSingle to handle no results gracefully
+        
+        if (foundById && !errById) {
+          dbCreator = foundById;
+          console.log(`✅ Found creator by TikTok ID: ${creator_id} (UUID: ${dbCreator.id})`);
+        } else if (errById) {
+          console.warn(`⚠️ Error searching by TikTok ID ${creator_id}:`, errById);
+        }
+      } catch (error) {
+        console.warn(`⚠️ Supabase error searching by TikTok ID ${creator_id}:`, error);
       }
     }
     
     // Step 2: If not found by ID, try to find by username
     if (!dbCreator && username_tiktok) {
-      const { data: foundByUsername, error: errByUsername } = await supabase
-        .from('creators')
-        .select('*')
-        .eq('username_tiktok', username_tiktok)
-        .single();
-      
-      if (foundByUsername && !errByUsername) {
-        dbCreator = foundByUsername;
-        console.log(`✅ Found creator by username: ${username_tiktok}`);
+      try {
+        const { data: foundByUsername, error: errByUsername } = await supabase
+          .from('creators')
+          .select('*')
+          .eq('username_tiktok', username_tiktok)
+          .maybeSingle(); // Use maybeSingle to handle no results gracefully
         
-        // If we found by username but creator_id is different, update it
-        if (creator_id && dbCreator.creator_id !== creator_id) {
-          console.log(`🔄 Updating creator_id from ${dbCreator.creator_id} to ${creator_id}`);
-          const { error: updateError } = await supabase
-            .from('creators')
-            .update({ creator_id })
-            .eq('id', dbCreator.id);
+        if (foundByUsername && !errByUsername) {
+          dbCreator = foundByUsername;
+          console.log(`✅ Found creator by username: ${username_tiktok} (UUID: ${dbCreator.id})`);
           
-          if (!updateError) {
-            dbCreator.creator_id = creator_id;
+          // CRITICAL: If we found by username but creator_id is NULL or different, update it
+          if (creator_id && (!dbCreator.creator_id || dbCreator.creator_id !== creator_id)) {
+            console.log(`🔄 Updating TikTok Creator ID from ${dbCreator.creator_id} to ${creator_id}`);
+            const { error: updateError } = await supabase
+              .from('creators')
+              .update({ creator_id })
+              .eq('id', dbCreator.id);
+            
+            if (!updateError) {
+              dbCreator.creator_id = creator_id;
+            } else {
+              console.error('❌ Failed to update creator_id:', updateError);
+            }
           }
+        } else if (errByUsername) {
+          console.warn(`⚠️ Error searching by username ${username_tiktok}:`, errByUsername);
         }
+      } catch (error) {
+        console.warn(`⚠️ Supabase error searching by username ${username_tiktok}:`, error);
       }
     }
     
     // Step 3: If still not found, create new creator
     if (!dbCreator) {
-      const insertData = {
-        creator_id: creator_id || null,
-        username_tiktok: username_tiktok || null,
-        ...otherData
-      };
-      
-      // Remove undefined values
-      Object.keys(insertData).forEach(key => {
-        if (insertData[key] === undefined) {
-          delete insertData[key];
+      // Handle creators without TikTok Creator ID (for performance upload)
+      if (!creator_id) {
+        if (!username_tiktok) {
+          throw new Error('Cannot create creator without both TikTok Creator ID and username');
         }
-      });
-      
-      const { data: newCreator, error: insertError } = await supabase
-        .from('creators')
-        .insert(insertData)
-        .select()
-        .single();
-      
-      if (insertError) {
-        console.error('❌ Error creating new creator:', insertError);
-        throw new Error(`Failed to create creator: ${insertError.message}`);
+        
+        console.warn(`⚠️ Creating creator without TikTok Creator ID: ${username_tiktok}`);
+        
+        // Generate a temporary placeholder TikTok Creator ID
+        const placeholderCreatorId = `TEMP_${username_tiktok}_${Date.now()}`;
+        
+        const insertData = {
+          creator_id: placeholderCreatorId, // Temporary placeholder
+          username_tiktok: username_tiktok,
+          status: 'needs_tiktok_id', // Flag for missing TikTok Creator ID
+          ...otherData
+        };
+        
+        // Remove undefined values
+        Object.keys(insertData).forEach(key => {
+          if (insertData[key] === undefined) {
+            delete insertData[key];
+          }
+        });
+        
+        const { data: newCreator, error: insertError } = await supabase
+          .from('creators')
+          .insert(insertData)
+          .select()
+          .single();
+        
+        if (insertError) {
+          console.error('❌ Error creating new creator with placeholder ID:', insertError);
+          throw new Error(`Failed to create creator: ${insertError.message}`);
+        }
+        
+        dbCreator = newCreator;
+        console.log(`⚠️ Created creator with placeholder TikTok ID: ${username_tiktok} (Placeholder: ${placeholderCreatorId}, UUID: ${dbCreator.id})`);
+      } else {
+        // Normal creation with TikTok Creator ID
+        const insertData = {
+          creator_id: creator_id,
+          username_tiktok: username_tiktok || null,
+          ...otherData
+        };
+        
+        // Remove undefined values
+        Object.keys(insertData).forEach(key => {
+          if (insertData[key] === undefined) {
+            delete insertData[key];
+          }
+        });
+        
+        const { data: newCreator, error: insertError } = await supabase
+          .from('creators')
+          .insert(insertData)
+          .select()
+          .single();
+        
+        if (insertError) {
+          console.error('❌ Error creating new creator:', insertError);
+          throw new Error(`Failed to create creator: ${insertError.message}`);
+        }
+        
+        dbCreator = newCreator;
+        console.log(`✅ Created new creator: ${username_tiktok} (TikTok ID: ${creator_id}, UUID: ${dbCreator.id})`);
       }
-      
-      dbCreator = newCreator;
-      console.log(`✅ Created new creator: ${username_tiktok} (ID: ${creator_id})`);
     }
     
     // Step 4: Update username if it changed
@@ -186,6 +246,13 @@ export const findOrCreateCreator = async (creatorData) => {
       }
     }
     
+    // FINAL VALIDATION: Warn if creator has placeholder TikTok Creator ID
+    if (dbCreator.creator_id && dbCreator.creator_id.startsWith('TEMP_')) {
+      console.warn(`⚠️ Creator ${dbCreator.username_tiktok} has placeholder TikTok Creator ID: ${dbCreator.creator_id}`);
+    }
+    
+    console.log(`🎯 FINAL RESULT: Creator ${dbCreator.username_tiktok} | TikTok ID: ${dbCreator.creator_id} | UUID: ${dbCreator.id}`);
+    
     return { creator: dbCreator, error: null };
     
   } catch (error) {
@@ -228,6 +295,12 @@ export const getCreatorsWithPerformance = async (limit = 100) => {
         live_hours,
         period_month,
         period_year
+      ),
+      bonus_calculations (
+        bonus_amount_idr,
+        payment_status,
+        month,
+        year
       )
     `)
     .order('followers_count', { ascending: false })
@@ -373,16 +446,16 @@ export const cleanupCreatorIds = async () => {
         const duplicateCreators = creators.slice(1);
         
         for (const duplicate of duplicateCreators) {
-          // Update all references to use the primary creator ID
+          // Update all references to use the primary creator's TikTok ID
           await supabase
             .from('bonus_calculations')
-            .update({ creator_id: primaryCreator.id })
-            .eq('creator_id', duplicate.id);
+            .update({ creator_id: primaryCreator.creator_id })
+            .eq('creator_id', duplicate.creator_id);
           
           await supabase
             .from('creator_performance')
-            .update({ creator_id: primaryCreator.id })
-            .eq('creator_id', duplicate.id);
+            .update({ creator_id: primaryCreator.creator_id })
+            .eq('creator_id', duplicate.creator_id);
           
           await supabase
             .from('username_history')

@@ -5,6 +5,7 @@ import Button from '../../common/Button';
 import Textarea from '../../common/Textarea';
 import CompactCard from '../CompactCard';
 import { supabase, findOrCreateCreator } from '../../../lib/supabase';
+import EnhancedPerformanceTable from './EnhancedPerformanceTable';
 
 const MessagesExportTab = ({ uploadedData, messages, onMessagesGenerated, onSaveComplete }) => {
   const [personalizedMessages, setPersonalizedMessages] = useState([]);
@@ -17,6 +18,7 @@ const MessagesExportTab = ({ uploadedData, messages, onMessagesGenerated, onSave
   });
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [notification, setNotification] = useState({ message: '', type: 'info', isVisible: false });
+  const [loading, setLoading] = useState(false);
   
   // Save to database states
   const [saveLoading, setSaveLoading] = useState(false);
@@ -147,9 +149,9 @@ const MessagesExportTab = ({ uploadedData, messages, onMessagesGenerated, onSave
             continue;
           }
           
-          // Insert performance data using the consistent creator ID
+          // Insert performance data using the internal database ID (foreign key constraint requirement)
           const perfData = {
-            creator_id: dbCreator.id, // Use the consistent database ID
+            creator_id: dbCreator.id, // Use internal database ID for foreign key relationship
             period_month: parseInt(month),
             period_year: parseInt(year),
             diamonds: creator.diamonds,
@@ -165,9 +167,7 @@ const MessagesExportTab = ({ uploadedData, messages, onMessagesGenerated, onSave
             .insert(perfData);
           
           if (perfError) {
-            console.error(`Error saving performance for ${creator.username_tiktok}:`, perfError);
-          } else {
-            console.log(`✅ Saved performance for ${creator.username_tiktok} (TikTok ID: ${creator.creator_id})`);
+            console.error(`Performance save error for ${creator.username_tiktok}:`, perfError);
           }
           
         } catch (error) {
@@ -566,6 +566,13 @@ const MessagesExportTab = ({ uploadedData, messages, onMessagesGenerated, onSave
           />
         </div>
       </CompactCard>
+
+      {/* Enhanced Performance Table */}
+      <EnhancedPerformanceTable
+        data={uploadedData}
+        loading={loading}
+        onRefresh={() => {/* reload data logic here */}}
+      />
     </div>
   );
 };

@@ -4,6 +4,9 @@ import { motion } from 'framer-motion';
 import useAuthStore from '../../store/authStore';
 import useThemeStore from '../../store/themeStore';
 
+// Debug log to help with chunk loading issues
+console.log('LoginPage component loaded successfully');
+
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -13,6 +16,10 @@ const LoginPage = () => {
   const { signIn, profile, user } = useAuthStore();
   const [loginSuccess, setLoginSuccess] = useState(false);
   const { theme } = useThemeStore();
+
+  useEffect(() => {
+    console.log('LoginPage component mounted successfully');
+  }, []);
 
   useEffect(() => {
     if (loginSuccess && profile) {

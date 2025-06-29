@@ -4,9 +4,9 @@ import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 
 const defaultRules = {
-  A: { minDays: 22, minHours: 100, bonusPercentage: 30 },
-  B: { minDays: 20, minHours: 60, bonusPercentage: 25 },
-  C: { minDays: 15, minHours: 40, bonusPercentage: 20 }
+  A: { days: 22, hours: 100, bonusPercentage: 30 },
+  B: { days: 20, hours: 60, bonusPercentage: 25 },
+  C: { days: 15, hours: 40, bonusPercentage: 20 }
 };
 
 const BonusRules = () => {
@@ -24,28 +24,22 @@ const BonusRules = () => {
         const { data, error } = await supabase
           .from('bonus_rules')
           .select('*')
+          .order('updated_at', { ascending: false })
+          .limit(1)
           .single();
-        if (data) {
-          setGradeRules({
-            A: {
-              minDays: data.grade_a_min_days,
-              minHours: data.grade_a_min_hours,
-              bonusPercentage: data.grade_a_bonus_percentage
-            },
-            B: {
-              minDays: data.grade_b_min_days,
-              minHours: data.grade_b_min_hours,
-              bonusPercentage: data.grade_b_bonus_percentage
-            },
-            C: {
-              minDays: data.grade_c_min_days,
-              minHours: data.grade_c_min_hours,
-              bonusPercentage: data.grade_c_bonus_percentage
-            }
-          });
-          setDollarRate(data.exchange_rate);
+          
+        if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+          throw error;
+        }
+        
+        if (data && data.requirements) {
+          setGradeRules(data.requirements);
+          console.log('✅ Rules loaded from database:', data.requirements);
+        } else {
+          console.log('ℹ️ No rules found in database, using defaults');
         }
       } catch (err) {
+        console.error('❌ Failed to fetch rules:', err);
         setError('Failed to fetch rules. Using defaults.');
       } finally {
         setLoading(false);
@@ -61,25 +55,32 @@ const BonusRules = () => {
     setSuccess('');
     try {
       const rulesData = {
-        grade_a_min_days: gradeRules.A.minDays,
-        grade_a_min_hours: gradeRules.A.minHours,
-        grade_a_bonus_percentage: gradeRules.A.bonusPercentage,
-        grade_b_min_days: gradeRules.B.minDays,
-        grade_b_min_hours: gradeRules.B.minHours,
-        grade_b_bonus_percentage: gradeRules.B.bonusPercentage,
-        grade_c_min_days: gradeRules.C.minDays,
-        grade_c_min_hours: gradeRules.C.minHours,
-        grade_c_bonus_percentage: gradeRules.C.bonusPercentage,
-        exchange_rate: dollarRate,
+        id: 1,
+        requirements: gradeRules,
+        bonus_table: {
+          A: [],
+          B: [],
+          C: []
+        },
         updated_at: new Date().toISOString()
       };
+      
+      console.log('💾 Saving rules to database:', rulesData);
+      
       const { error } = await supabase
         .from('bonus_rules')
-        .upsert(rulesData);
+        .upsert(rulesData, { 
+          onConflict: 'id',
+          ignoreDuplicates: false 
+        });
+        
       if (error) throw error;
+      
       setSuccess('Rules saved successfully!');
       setTimeout(() => setSuccess(''), 3000);
+      console.log('✅ Rules saved successfully');
     } catch (err) {
+      console.error('❌ Failed to save rules:', err);
       setError('Failed to save rules. Please try again.');
       setTimeout(() => setError(''), 5000);
     } finally {
@@ -97,15 +98,15 @@ const BonusRules = () => {
                 <Input
                   label="Min Days"
                   type="number"
-                  value={gradeRules[grade].minDays}
-                  onChange={e => setGradeRules(rules => ({ ...rules, [grade]: { ...rules[grade], minDays: parseInt(e.target.value) } }))}
+                  value={gradeRules[grade].days}
+                  onChange={e => setGradeRules(rules => ({ ...rules, [grade]: { ...rules[grade], days: parseInt(e.target.value) } }))}
                   min={0}
                 />
                 <Input
                   label="Min Hours"
                   type="number"
-                  value={gradeRules[grade].minHours}
-                  onChange={e => setGradeRules(rules => ({ ...rules, [grade]: { ...rules[grade], minHours: parseInt(e.target.value) } }))}
+                  value={gradeRules[grade].hours}
+                  onChange={e => setGradeRules(rules => ({ ...rules, [grade]: { ...rules[grade], hours: parseInt(e.target.value) } }))}
                   min={0}
                 />
                 <Input

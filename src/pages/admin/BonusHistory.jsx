@@ -30,7 +30,7 @@ const BonusHistory = () => {
       try {
         const { data, error } = await supabase
           .from('bonus_calculations')
-          .select('*, creator:creators(username_tiktok)')
+          .select('*, creator:creators(username_tiktok, creator_id)')
           .order('created_at', { ascending: false })
           .limit(500);
         if (error) throw error;

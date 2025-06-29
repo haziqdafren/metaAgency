@@ -68,11 +68,8 @@ const NewUploadTab = ({ onUploadComplete }) => {
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) {
-      console.log('🔴 No file selected');
       return;
     }
-    
-    console.log('🔵 Starting file upload:', file.name, file.size, 'bytes');
     
     setLoading(true);
     setUploadError('');
@@ -80,24 +77,17 @@ const NewUploadTab = ({ onUploadComplete }) => {
     setCreatorData([]); // Clear previous data
     
     try {
-      console.log('🔵 Validating file...');
       // Validate file first
       validateFile(file);
-      console.log('✅ File validation passed');
       
-      console.log('🔵 Loading XLSX library...');
       const XLSX = await import('xlsx');
-      console.log('✅ XLSX library loaded');
       
-      console.log('🔵 Reading file data...');
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data);
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-      console.log('✅ File parsed, found', rows.length, 'rows');
 
       // Find the header row
-      console.log('🔵 Finding header row...');
       let headerRowIdx = 0;
       for (let i = 0; i < Math.min(10, rows.length); i++) {
         if (
@@ -108,11 +98,28 @@ const NewUploadTab = ({ onUploadComplete }) => {
           break;
         }
       }
-      console.log('✅ Header row found at index:', headerRowIdx);
       
       const headers = rows[headerRowIdx];
+      
+      // Enhanced auto-detection of Creator ID column with more patterns
+      const creatorIdColumn = headers.find(header => {
+        if (!header) return false;
+        const headerLower = header.toLowerCase().trim();
+        return (
+          headerLower.includes('creator id') ||
+          headerLower.includes('creatorid') ||
+          headerLower.includes('creator_id') ||
+          headerLower === 'id' ||
+          headerLower === 'creator id:' ||
+          headerLower.includes('tiktok id') ||
+          headerLower.includes('tiktokid') ||
+          headerLower.includes('user id') ||
+          headerLower.includes('userid') ||
+          (headerLower.startsWith('id') && headerLower.length <= 5)
+        );
+      });
+      
       const dataRows = rows.slice(headerRowIdx + 1);
-      console.log('🔵 Processing', dataRows.length, 'data rows...');
 
       const processedData = dataRows
         .map((rowArr, index) => {
@@ -121,94 +128,100 @@ const NewUploadTab = ({ onUploadComplete }) => {
             row[header] = rowArr[idx];
           });
           
-          const processed = {
-            creator_id: row['Creator ID:'] || '',
-            username_tiktok: row["Creator's username"] || row["Creator username"] || '',
-            followers_count: parseInt(row['Followers'] || row['Followers Count'] || '0', 10),
-            konten_kategori: mapCategory(row['Group'] || row['Category'] || ''),
-            game_preference: extractGames(row['Notes'] || ''),
-            joined_date: parseDate(row['Joined time'] || row['Join Date'] || ''),
-            days_since_joining: parseInt(row['Days since joining'] || '0', 10),
-            graduation_status: row['Graduation status'] || '',
-            status: row['Relationship status'] === 'Effective' ? 'active' : 'inactive',
-            diamonds: parseInt(row['Diamonds'] || '0', 10),
-            validDays: parseInt(row['Valid go LIVE days'] || '0', 10),
-            liveDuration: row['LIVE duration'] || '',
-            newFollowers: parseInt(row['New followers'] || '0', 10),
-            liveStreams: parseInt(row['LIVE streams'] || '0', 10),
-            diamondsVsLastMonth: row['Diamonds - Vs. last month'] || '0%',
-            durationVsLastMonth: row['LIVE duration - Vs. last month'] || '0%',
-            followersVsLastMonth: row['New followers - Vs. last month'] || '0%',
-            diamondsAchieved: row['Diamonds - Percentage achieved'] || '0%',
-            durationAchieved: row['LIVE duration - Percentage achieved'] || '0%',
-            validDaysAchieved: row['Valid go LIVE days - Percentage achieved'] || '0%',
-            subscriptionRevenue: parseFloat(row['Subscription revenue'] || '0'),
-            period: row['Data period'] || '',
-            graduationStatus: row['Graduation status'] || '',
-            creatorNetworkManager: row['Creator Network manager'] || ''
-          };
+          // Enhanced Creator ID extraction with multiple fallback strategies
+          let creatorId = '';
           
-          if (index < 3) {
-            console.log(`Sample processed row ${index}:`, processed);
+          // Strategy 1: Use auto-detected column
+          if (creatorIdColumn && row[creatorIdColumn]) {
+            creatorId = String(row[creatorIdColumn]).trim();
           }
+          
+          // Strategy 2: Try exact column name matches
+          if (!creatorId) {
+            const fallbackColumns = [
+              'Creator ID:', 'Creator ID', 'CreatorID', 'creator_id', 'ID',
+              'TikTok ID', 'TikTokID', 'tiktok_id', 'User ID', 'UserID',
+              'Creator ID ', ' Creator ID', 'creator id', 'CREATOR ID'
+            ];
+            
+            for (const col of fallbackColumns) {
+              if (row[col]) {
+                creatorId = String(row[col]).trim();
+                break;
+              }
+            }
+          }
+          
+          // Strategy 3: Search all columns for numeric IDs
+          if (!creatorId) {
+            for (const [key, value] of Object.entries(row)) {
+              if (key && key.toLowerCase().includes('id') && value) {
+                const strValue = String(value).trim();
+                // Check if it looks like a TikTok Creator ID (long numeric string)
+                if (/^\d{10,}$/.test(strValue)) {
+                  creatorId = strValue;
+                  break;
+                }
+              }
+            }
+          }
+          
+          // Process the data
+          const processed = {
+            creator_id: creatorId,
+            username_tiktok: row["Creator's username"] || row["Creator username"] || row["Username"] || row["Creator nickname"] || '',
+            followers_count: parseInt(row["Followers count"] || row["Followers"] || 0),
+            konten_kategori: mapCategory(row["Content category"] || row["Category"] || row["Group"] || ''),
+            game_preference: extractGames(row["Notes"] || row["Description"] || ''),
+            joined_date: parseDate(row["Joined date"] || row["Join date"] || ''),
+            days_since_joining: parseInt(row["Days since joining"] || 0),
+            graduation_status: row["Graduation status"] || row["Status"] || 'active',
+            status: row["Status"] || 'active',
+            link_tiktok: row["TikTok link"] || row["Link"] || '',
+            nomor_wa: row["WhatsApp number"] || row["Phone"] || '',
+            diamonds: parseInt(row["Diamonds"] || 0),
+            valid_days: parseInt(row["Valid days"] || row["Valid days(d)"] || 0),
+            live_duration: row["Live duration"] || row["LIVE duration(h)"] || '0h 0m',
+            new_followers: parseInt(row["New followers"] || 0),
+            diamonds_vs_last_month: row["Diamonds vs last month"] || '0%',
+            live_streams: parseInt(row["Live streams"] || 0),
+            subscription_revenue: parseFloat(row["Subscription revenue"] || 0),
+            period: row["Period"] || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`,
+            raw_data: row
+          };
           
           return processed;
         })
-        // Only include creators managed by the specified email
-        .filter((creator, index) => {
-          const validManager = creator.creatorNetworkManager === 'mediaentertainmenttalentagency@gmail.com';
-          if (!validManager && index < 5) {
-            console.log(`🔴 Filtered out row (not correct manager) ${index}:`, creator);
+        .filter(creator => {
+          // Filter out invalid entries
+          if (!creator.username_tiktok || creator.username_tiktok.trim() === '') {
+            return false;
           }
-          return validManager;
-        })
-        // Remove empty rows
-        .filter((creator, index) => {
-          const valid = creator.username_tiktok && creator.username_tiktok.trim() !== '';
-          if (!valid && index < 5) {
-            console.log(`🔴 Filtered out row (empty username) ${index}:`, creator);
-          }
-          return valid;
+          return true;
         });
 
-      console.log('✅ Data processing complete. Valid creators:', processedData.length);
-
       if (processedData.length === 0) {
-        console.log('🔴 No valid data found after processing');
-        throw new Error('No valid creator data found. Please check your Excel file format.');
+        throw new Error('No valid creator data found in the file.');
       }
 
-      console.log('🔵 Setting creator data state...');
       setCreatorData(processedData);
-      console.log('✅ Creator data state set. Length:', processedData.length);
       
       const successMsg = `✅ Successfully parsed ${processedData.length} creators! Period: ${processedData[0]?.period || 'Unknown'}`;
-      console.log('🔵 Setting success message:', successMsg);
       setUploadSuccess(successMsg);
       
-      // Generate basic messages for the Messages tab
-      console.log('🔵 Generating messages...');
+      // Generate messages for the uploaded data
       const generatedMessages = processedData.map(creator => ({
         username: creator.username_tiktok,
-        message: `📊 Performance Report for @${creator.username_tiktok}\n💎 Diamonds: ${creator.diamonds.toLocaleString('id-ID')}\n📅 Valid Days: ${creator.validDays}\n⏱️ Live Duration: ${creator.liveDuration}`
+        message: `Hi @${creator.username_tiktok}, your performance data has been uploaded successfully!`
       }));
       
-      console.log('✅ Messages generated:', generatedMessages.length);
-      
-      // Notify parent about upload completion
       if (onUploadComplete) {
-        console.log('🔵 Notifying parent component...');
         onUploadComplete(processedData, generatedMessages);
-        console.log('✅ Parent component notified');
       }
       
-      console.log('🎉 FILE UPLOAD COMPLETE! CreatorData should now have', processedData.length, 'items');
-      
     } catch (error) {
-      console.error('🔴 Upload error:', error);
-      setUploadError('Error processing file: ' + error.message);
+      setUploadError(error.message);
     } finally {
-      console.log('🔵 Cleaning up, setting loading to false');
       setLoading(false);
     }
   };
@@ -238,7 +251,7 @@ const NewUploadTab = ({ onUploadComplete }) => {
 
   const stats = {
     totalCreators: creatorData.length,
-    activeCreators: creatorData.filter(c => c.validDays >= 20).length,
+    activeCreators: creatorData.filter(c => c.valid_days >= 20).length,
     totalDiamonds: creatorData.reduce((sum, c) => sum + c.diamonds, 0),
     topPerformer: creatorData.length > 0 ? creatorData.reduce((max, c) => c.diamonds > max.diamonds ? c : max, creatorData[0]) : null
   };
@@ -248,14 +261,6 @@ const NewUploadTab = ({ onUploadComplete }) => {
 
   return (
     <div className="space-y-6">
-      {/* Debug Panel - ALWAYS VISIBLE */}
-      <div className="bg-gray-100 p-3 rounded text-xs font-mono">
-        <div><strong>Debug:</strong> creatorData.length = {creatorData.length}</div>
-        <div><strong>Status:</strong> {loading ? 'Loading...' : 'Ready'}</div>
-        <div><strong>uploadSuccess:</strong> {uploadSuccess ? 'Yes' : 'No'}</div>
-        <div><strong>Has data for save button:</strong> {creatorData.length > 0 ? 'YES - SHOULD SHOW SAVE BUTTON' : 'NO'}</div>
-      </div>
-
       {/* Upload Success Message */}
       {creatorData.length > 0 && (
         <div className="bg-green-100 border-2 border-green-500 p-4 rounded-lg">
@@ -450,8 +455,8 @@ const NewUploadTab = ({ onUploadComplete }) => {
                     <CompactTable.Cell>
                       {creator.diamonds.toLocaleString('id-ID')}
                     </CompactTable.Cell>
-                    <CompactTable.Cell>{creator.validDays}</CompactTable.Cell>
-                    <CompactTable.Cell>{creator.liveDuration}</CompactTable.Cell>
+                    <CompactTable.Cell>{creator.valid_days}</CompactTable.Cell>
+                    <CompactTable.Cell>{creator.live_duration}</CompactTable.Cell>
                     <CompactTable.Cell>
                       <span className={`px-2 py-1 text-xs rounded-full ${
                         creator.status === 'active' 

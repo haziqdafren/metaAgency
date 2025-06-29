@@ -10,8 +10,6 @@ import Select from '../../components/common/Select';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
-import EnhancedArticlesTable from '../../components/admin/EnhancedArticlesTable';
-import CompactCard from '../../components/admin/CompactCard';
 
 const AdminArticles = () => {
   const [articles, setArticles] = useState([]);
@@ -32,10 +30,15 @@ const AdminArticles = () => {
     published_at: null
   });
   const [editingId, setEditingId] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+  const totalPages = Math.ceil(articles.length / pageSize);
+  const paginatedArticles = articles.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   useEffect(() => {
     fetchArticles();
     fetchCategories();
+    setCurrentPage(1);
   }, []);
 
   const fetchArticles = async () => {
@@ -130,95 +133,6 @@ const AdminArticles = () => {
       fetchArticles();
     }
     setLoading(false);
-  };
-
-  // Handler for bulk actions from Enhanced DataTable
-  const handleBulkAction = async (action, selectedData, selectedIds) => {
-    switch(action) {
-      case 'publish':
-        setLoading(true);
-        try {
-          const { error } = await supabase
-            .from('articles')
-            .update({ published_at: new Date().toISOString() })
-            .in('id', selectedIds);
-          
-          if (error) throw error;
-          
-          setNotification({ 
-            message: `Published ${selectedIds.length} articles`, 
-            type: 'success', 
-            isVisible: true 
-          });
-          fetchArticles();
-        } catch (error) {
-          setNotification({ 
-            message: 'Error publishing articles: ' + error.message, 
-            type: 'error', 
-            isVisible: true 
-          });
-        } finally {
-          setLoading(false);
-        }
-        break;
-        
-      case 'unpublish':
-        setLoading(true);
-        try {
-          const { error } = await supabase
-            .from('articles')
-            .update({ published_at: null })
-            .in('id', selectedIds);
-          
-          if (error) throw error;
-          
-          setNotification({ 
-            message: `Unpublished ${selectedIds.length} articles`, 
-            type: 'success', 
-            isVisible: true 
-          });
-          fetchArticles();
-        } catch (error) {
-          setNotification({ 
-            message: 'Error unpublishing articles: ' + error.message, 
-            type: 'error', 
-            isVisible: true 
-          });
-        } finally {
-          setLoading(false);
-        }
-        break;
-        
-      case 'delete':
-        setLoading(true);
-        try {
-          const { error } = await supabase
-            .from('articles')
-            .delete()
-            .in('id', selectedIds);
-          
-          if (error) throw error;
-          
-          setNotification({ 
-            message: `Deleted ${selectedIds.length} articles`, 
-            type: 'success', 
-            isVisible: true 
-          });
-          fetchArticles();
-        } catch (error) {
-          setNotification({ 
-            message: 'Error deleting articles: ' + error.message, 
-            type: 'error', 
-            isVisible: true 
-          });
-        } finally {
-          setLoading(false);
-        }
-        break;
-        
-      default:
-        console.log('Unknown bulk action:', action);
-    }
   };
 
   const handleSubmit = async (e) => {
@@ -323,26 +237,56 @@ const AdminArticles = () => {
   return (
     <div className="p-6 max-w-7xl mx-auto transition-colors duration-500">
       <Notification {...notification} onClose={() => setNotification({ ...notification, isVisible: false })} />
-      
-      {/* Enhanced Articles Table */}
-      <CompactCard 
-        title="Articles Management"
-        subtitle={`Managing ${articles.length} articles with enhanced search and bulk operations`}
-        compact
-      >
-        <EnhancedArticlesTable 
-          articles={articles}
-          categories={categories}
-          loading={loading}
-          onEditArticle={handleEdit}
-          onDeleteArticle={handleDelete}
-          onBulkAction={handleBulkAction}
-          onCreateNew={handleCreate}
-          onRefresh={fetchArticles}
-        />
-      </CompactCard>
-
-      {/* Article Form Modal */}
+      <motion.div className={`rounded-xl shadow-lg p-8 mb-8 transition-colors duration-500`} initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold">Manage Articles</h2>
+          <Button onClick={handleCreate} variant="primary">New Article</Button>
+        </div>
+        {loading ? <LoadingSpinner size="md" /> : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="px-4 py-2 text-xs font-medium uppercase">Title</th>
+                  <th className="px-4 py-2 text-xs font-medium uppercase">Categories</th>
+                  <th className="px-4 py-2 text-xs font-medium uppercase">Status</th>
+                  <th className="px-4 py-2 text-xs font-medium uppercase">Published</th>
+                  <th className="px-4 py-2 text-xs font-medium uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedArticles.map((article) => (
+                  <tr key={article.id} className="bg-white">
+                    <td className="px-4 py-2">{article.title}</td>
+                    <td className="px-4 py-2">
+                      {article.categories?.map(c => c.category.name).join(', ')}
+                    </td>
+                    <td className="px-4 py-2">{article.published_at ? 'Published' : 'Draft'}</td>
+                    <td className="px-4 py-2">
+                      {article.published_at ? new Date(article.published_at).toLocaleDateString() : '-'}
+                    </td>
+                    <td className="px-4 py-2 flex gap-2">
+                      <Button size="sm" variant="secondary" onClick={() => handleEdit(article)}>
+                        Edit
+                      </Button>
+                      <Button size="sm" variant="danger" onClick={() => handleDelete(article.id)}>
+                        Delete
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center gap-2 mt-4">
+                <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="px-2 py-1 rounded bg-gray-200 text-gray-700 disabled:opacity-50">Prev</button>
+                <span className="text-sm">Page {currentPage} of {totalPages}</span>
+                <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="px-2 py-1 rounded bg-gray-200 text-gray-700 disabled:opacity-50">Next</button>
+              </div>
+            )}
+          </div>
+        )}
+      </motion.div>
       <AnimatePresence>
         {showForm && (
           <motion.div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 overflow-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>

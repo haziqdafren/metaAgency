@@ -7,32 +7,102 @@ import useThemeStore from './store/themeStore';
 import useSidebarStore from './store/sidebarStore';
 import { Sun, Moon, LogOut } from 'lucide-react';
 
+// Helper function for reliable lazy loading with retry
+const lazyLoad = (importFunc, retries = 3) => {
+  return lazy(() => {
+    return new Promise((resolve, reject) => {
+      const attempt = () => {
+        importFunc()
+          .then(resolve)
+          .catch((error) => {
+            console.warn(`Chunk loading attempt failed:`, error);
+            if (retries > 0) {
+              console.warn(`Retrying... (${retries} attempts left)`);
+              setTimeout(attempt, 1000);
+            } else {
+              console.error(`Chunk loading failed after ${3} attempts:`, error);
+              reject(error);
+            }
+          });
+      };
+      attempt();
+    });
+  });
+};
+
 // Public Pages
-const Home = lazy(() => import('./pages/public/Home'));
-const AboutPage = lazy(() => import('./pages/public/AboutPage'));
-const ServicesPage = lazy(() => import('./pages/public/ServicesPage'));
-const PublicArticles = lazy(() => import('./pages/public/Articles'));
-const JoinPage = lazy(() => import('./pages/public/JoinPage'));
-const ContactPage = lazy(() => import('./pages/public/ContactPage'));
-const FAQ = lazy(() => import('./pages/public/FAQ'));
-const Careers = lazy(() => import('./pages/public/Careers'));
-const Privacy = lazy(() => import('./pages/public/Privacy'));
-const Terms = lazy(() => import('./pages/public/Terms'));
-const Disclaimer = lazy(() => import('./pages/public/Disclaimer'));
-const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
-const NotFound = lazy(() => import('./pages/public/NotFound'));
-const BonusContent = lazy(() => import('./pages/public/BonusContent'));
-const ArticleDetail = lazy(() => import('./pages/public/ArticleDetail'));
+const Home = lazyLoad(() => import('./pages/public/Home'));
+const AboutPage = lazyLoad(() => import('./pages/public/AboutPage'));
+const ServicesPage = lazyLoad(() => import('./pages/public/ServicesPage'));
+const PublicArticles = lazyLoad(() => import('./pages/public/Articles'));
+const JoinPage = lazyLoad(() => import('./pages/public/JoinPage'));
+const ContactPage = lazyLoad(() => import('./pages/public/ContactPage'));
+const FAQ = lazyLoad(() => import('./pages/public/FAQ'));
+const Careers = lazyLoad(() => import('./pages/public/Careers'));
+const Privacy = lazyLoad(() => import('./pages/public/Privacy'));
+const Terms = lazyLoad(() => import('./pages/public/Terms'));
+const Disclaimer = lazyLoad(() => import('./pages/public/Disclaimer'));
+const LoginPage = lazyLoad(() => import('./pages/auth/LoginPage'));
+const NotFound = lazyLoad(() => import('./pages/public/NotFound'));
+const BonusContent = lazyLoad(() => import('./pages/public/BonusContent'));
+const ArticleDetail = lazyLoad(() => import('./pages/public/ArticleDetail'));
 
 // Protected Pages
-const Dashboard = lazy(() => import('./pages/talent/Dashboard'));
-const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
-const AdminSidebar = lazy(() => import('./components/admin/AdminSidebar'));
-const TalentManagement = lazy(() => import('./pages/admin/TalentManagement'));
-const PerformanceUpload = lazy(() => import('./pages/admin/PerformanceUpload'));
-const BonusCalculator = lazy(() => import('./pages/admin/BonusCalculator'));
-const AdminArticles = lazy(() => import('./pages/admin/AdminArticles'));
-const TalentSearch = lazy(() => import('./pages/admin/TalentSearch'));
+const Dashboard = lazyLoad(() => import('./pages/talent/Dashboard'));
+const AdminDashboard = lazyLoad(() => import('./pages/admin/AdminDashboard'));
+const AdminSidebar = lazyLoad(() => import('./components/admin/AdminSidebar'));
+const TalentManagement = lazyLoad(() => import('./pages/admin/TalentManagement'));
+const PerformanceUpload = lazyLoad(() => import('./pages/admin/PerformanceUpload'));
+const BonusCalculator = lazyLoad(() => import('./pages/admin/BonusCalculator'));
+const AdminArticles = lazyLoad(() => import('./pages/admin/AdminArticles'));
+const TalentSearch = lazyLoad(() => import('./pages/admin/TalentSearch'));
+
+// Error Boundary Component
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('Error caught by boundary:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="text-center p-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Something went wrong</h2>
+            <p className="text-gray-600 mb-4">We're having trouble loading this page.</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Reload Page
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+// Loading Fallback Component
+const LoadingFallback = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+      <p className="text-gray-600">Loading...</p>
+    </div>
+  </div>
+);
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -116,10 +186,10 @@ function AppRoutes() {
   const { theme } = useThemeStore();
 
   return (
-    <>
+    <ErrorBoundary>
       {!isAdminRoute && <Navbar />}
       <div className={`${!isAdminRoute ? `min-h-screen transition-colors duration-500 ${theme === 'dark' ? 'bg-meta-black text-white' : 'bg-white text-meta-black'}` : ''}`}>
-        <Suspense fallback={<div style={{ minHeight: '50vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading...</div>}>
+        <Suspense fallback={<LoadingFallback />}>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/about" element={<AboutPage />} />
@@ -133,7 +203,11 @@ function AppRoutes() {
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/disclaimer" element={<Disclaimer />} />
-            <Route path="/login" element={<LoginPage />} />
+            <Route path="/login" element={
+              <ErrorBoundary>
+                <LoginPage />
+              </ErrorBoundary>
+            } />
             <Route path="/dashboard" element={
               <ProtectedRoute requiredRole="talent">
                 <Dashboard />
@@ -161,7 +235,7 @@ function AppRoutes() {
       </div>
       {!isAdminRoute && <Footer />}
       <ScrollToTop />
-    </>
+    </ErrorBoundary>
   );
 }
 

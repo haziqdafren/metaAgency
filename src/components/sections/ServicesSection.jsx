@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   TrendingUp, 
@@ -6,7 +6,9 @@ import {
   BarChart2, 
   DollarSign, 
   Target, 
-  Shield 
+  Shield,
+  Zap,
+  Star
 } from 'lucide-react';
 import useThemeStore from '../../store/themeStore';
 import Button from '../common/Button';

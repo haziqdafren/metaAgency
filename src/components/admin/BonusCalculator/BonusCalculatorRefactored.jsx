@@ -14,6 +14,7 @@ import UploadSection from './UploadSection';
 import SummaryStats from './SummaryStats';
 import ActionButtons from './ActionButtons';
 import CreatorsTable from './CreatorsTable';
+import EnhancedBonusTable from './EnhancedBonusTable';
 
 Chart.register(CategoryScale, LinearScale, BarElement, Title, ChartTooltip, Legend);
 
@@ -29,6 +30,13 @@ const BonusCalculatorRefactored = ({ onCalculationComplete }) => {
   const [showChart, setShowChart] = useState(false);
   const [dollarRate, setDollarRate] = useState(16000);
   const [debugInfo, setDebugInfo] = useState(null);
+
+  // Save to database states
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [saveProgress, setSaveProgress] = useState({ current: 0, total: 0 });
+  const [saveError, setSaveError] = useState('');
+  const [saveSuccess, setSaveSuccess] = useState('');
+  const [isSaved, setIsSaved] = useState(false);
 
   // UI state
   const [showBonusTable, setShowBonusTable] = useState(false);
@@ -54,40 +62,10 @@ const BonusCalculatorRefactored = ({ onCalculationComplete }) => {
 
   // Rules management
   const [gradeRequirements, setGradeRequirements] = useState({
-    A: { days: 22, hours: 100 },
-    B: { days: 20, hours: 60 },
-    C: { days: 15, hours: 40 }
+    A: { days: 22, hours: 100, bonusPercentage: 30 },
+    B: { days: 20, hours: 60, bonusPercentage: 25 },
+    C: { days: 15, hours: 40, bonusPercentage: 20 }
   });
-  const [bonusTable, setBonusTable] = useState({
-    A: [
-      { minCoins: 2000, bonus: 10000 },
-      { minCoins: 1000, bonus: 5000 },
-      { minCoins: 750, bonus: 3100 },
-      { minCoins: 500, bonus: 1300 },
-      { minCoins: 300, bonus: 1000 },
-      { minCoins: 200, bonus: 575 },
-      { minCoins: 100, bonus: 350 },
-      { minCoins: 50, bonus: 175 },
-      { minCoins: 30, bonus: 100 },
-      { minCoins: 10, bonus: 50 },
-    ],
-    B: [
-      { minCoins: 200, bonus: 500 },
-      { minCoins: 150, bonus: 400 },
-      { minCoins: 100, bonus: 300 },
-      { minCoins: 50, bonus: 150 },
-      { minCoins: 20, bonus: 75 },
-    ],
-    C: [
-      { minCoins: 200, bonus: 200 },
-      { minCoins: 50, bonus: 100 },
-      { minCoins: 20, bonus: 50 },
-      { minCoins: 10, bonus: 20 },
-    ]
-  });
-  const [rulesLoading, setRulesLoading] = useState(false);
-  const [rulesSuccess, setRulesSuccess] = useState('');
-  const [rulesError, setRulesError] = useState('');
 
   // Audit and history
   const [auditLog, setAuditLog] = useState([]);
@@ -147,22 +125,22 @@ const BonusCalculatorRefactored = ({ onCalculationComplete }) => {
         creator.liveHours >= (gradeRequirements.A?.hours || 0)
       ) {
         grade = 'A';
-        percentage = 0.3;
-        breakdown = `A Grade: ${creator.validDays} days, ${creator.liveHours} hours`;
+        percentage = (gradeRequirements.A?.bonusPercentage || 30) / 100;
+        breakdown = `A Grade: ${creator.validDays} days, ${creator.liveHours} hours (${gradeRequirements.A?.bonusPercentage || 30}%)`;
       } else if (
         creator.validDays >= (gradeRequirements.B?.days || 0) &&
         creator.liveHours >= (gradeRequirements.B?.hours || 0)
       ) {
         grade = 'B';
-        percentage = 0.25;
-        breakdown = `B Grade: ${creator.validDays} days, ${creator.liveHours} hours`;
+        percentage = (gradeRequirements.B?.bonusPercentage || 25) / 100;
+        breakdown = `B Grade: ${creator.validDays} days, ${creator.liveHours} hours (${gradeRequirements.B?.bonusPercentage || 25}%)`;
       } else if (
         creator.validDays >= (gradeRequirements.C?.days || 0) &&
         creator.liveHours >= (gradeRequirements.C?.hours || 0)
       ) {
         grade = 'C';
-        percentage = 0.2;
-        breakdown = `C Grade: ${creator.validDays} days, ${creator.liveHours} hours`;
+        percentage = (gradeRequirements.C?.bonusPercentage || 20) / 100;
+        breakdown = `C Grade: ${creator.validDays} days, ${creator.liveHours} hours (${gradeRequirements.C?.bonusPercentage || 20}%)`;
       }
       
       if (!grade) {
@@ -271,79 +249,113 @@ const BonusCalculatorRefactored = ({ onCalculationComplete }) => {
   // Action handlers
   const handleSaveToDatabase = useCallback(async () => {
     if (eligibleCreators.length === 0) {
-      alert('No eligible creators to save.');
+      setSaveError('No eligible creators to save.');
       return;
     }
-    setLoading(true);
+    
+    setSaveLoading(true);
+    setSaveError('');
+    setSaveSuccess('');
+    setSaveProgress({ current: 0, total: eligibleCreators.length });
+    setIsSaved(false);
+    
     let savedCount = 0;
     
-    for (const creator of eligibleCreators) {
-      try {
-        // Use centralized creator management
-        const { creator: dbCreator, error: creatorError } = await findOrCreateCreator({
-          creator_id: creator.creatorId,
-          username_tiktok: creator.username,
-          graduation_status: creator.graduationStatus || null
-        });
-        
-        if (creatorError) {
-          console.error(`Error managing creator ${creator.username}:`, creatorError);
-          continue;
-        }
-        
-        if (!dbCreator) {
-          console.error(`Failed to get/create creator for ${creator.username}`);
-          continue;
-        }
-        
-        // Save bonus calculation using the consistent creator ID
-        const { error } = await supabase
-          .from('bonus_calculations')
-          .upsert({
-            creator_id: dbCreator.id, // Use the consistent database ID
-            month: selectedMonth,
-            year: selectedYear,
-            diamonds: creator.diamonds,
-            valid_days: creator.validDays,
-            live_hours: creator.liveHours,
-            tier: creator.grade,
-            bonus_amount_idr: creator.bonusAmount,
-            payment_status: creator.paymentStatus,
-            notes: `Grade ${creator.grade} bonus approved`
+    try {
+      for (const [idx, creator] of eligibleCreators.entries()) {
+        try {
+          // Update progress
+          setSaveProgress({ current: idx + 1, total: eligibleCreators.length });
+          
+          // Use centralized creator management
+          const { creator: dbCreator, error: creatorError } = await findOrCreateCreator({
+            creator_id: creator.creatorId,
+            username_tiktok: creator.username,
+            graduation_status: creator.graduationStatus || null
           });
-        
-        if (!error) {
-          savedCount++;
-          console.log(`✅ Saved bonus for ${creator.username} (TikTok ID: ${creator.creatorId})`);
-        } else {
-          console.error(`Error saving bonus for ${creator.username}:`, error);
+          
+          if (creatorError) {
+            console.error(`Error managing creator ${creator.username}:`, creatorError);
+            continue;
+          }
+          
+          if (!dbCreator) {
+            console.error(`Failed to get/create creator for ${creator.username}`);
+            continue;
+          }
+          
+          // Save bonus calculation using the internal database ID (foreign key constraint requirement)
+          const { error } = await supabase
+            .from('bonus_calculations')
+            .upsert({
+              creator_id: dbCreator.id, // Use internal database ID for foreign key relationship
+              month: selectedMonth,
+              year: selectedYear,
+              diamonds: creator.diamonds,
+              valid_days: creator.validDays,
+              live_hours: creator.liveHours,
+              tier: creator.grade,
+              bonus_amount_idr: creator.bonusAmount,
+              payment_status: creator.paymentStatus,
+              notes: `Grade ${creator.grade} bonus approved`
+            });
+          
+          if (!error) {
+            savedCount++;
+            console.log(`✅ BONUS SAVED: ${creator.username} | TikTok ID: ${dbCreator.creator_id} | UUID: ${dbCreator.id}`);
+          } else {
+            console.error(`❌ BONUS SAVE ERROR: ${creator.username} | TikTok ID: ${dbCreator.creator_id} | UUID: ${dbCreator.id}`, error);
+            console.error('Bonus data attempted:', {
+              creator_id: dbCreator.id, // This should be the UUID being saved
+              tiktok_creator_id: dbCreator.creator_id,
+              month: selectedMonth,
+              year: selectedYear
+            });
+          }
+        } catch (error) {
+          console.error(`Error processing ${creator.username}:`, error);
         }
-      } catch (error) {
-        console.error(`Error processing ${creator.username}:`, error);
       }
+      
+      // Save to history
+      await supabase.from('bonus_calculation_history').insert({
+        month: selectedMonth,
+        year: selectedYear,
+        rules_snapshot: { gradeRequirements },
+        summary,
+        eligible_creators: eligibleCreators,
+        notes: adminNotes,
+        created_at: new Date().toISOString(),
+        created_by: profile?.id || null,
+      });
+      
+      setIsSaved(true);
+      setSaveSuccess(`🎉 Successfully saved ${savedCount} bonus calculations!`);
+      
+      // Clear success message after delay
+      setTimeout(() => {
+        setSaveSuccess('');
+      }, 5000);
+      
+      // Mark step as completed in navigation
+      if (onCalculationComplete) {
+        onCalculationComplete();
+      }
+    } catch (error) {
+      console.error('Save error:', error);
+      setSaveError('Error saving to database: ' + error.message);
+    } finally {
+      setSaveLoading(false);
+      setSaveProgress({ current: 0, total: 0 });
+      setAdminNotes('');
     }
-    
-    // Save to history
-    await supabase.from('bonus_calculation_history').insert({
-      month: selectedMonth,
-      year: selectedYear,
-      rules_snapshot: { gradeRequirements, bonusTable },
-      summary,
-      eligible_creators: eligibleCreators,
-      notes: adminNotes,
-      created_at: new Date().toISOString(),
-      created_by: profile?.id || null,
-    });
-    
-    setLoading(false);
-    setAdminNotes('');
-    alert(`Successfully saved ${savedCount} bonus calculations!`);
-    
-    // Mark step as completed in navigation
-    if (onCalculationComplete) {
-      onCalculationComplete();
-    }
-  }, [eligibleCreators, selectedMonth, selectedYear, gradeRequirements, bonusTable, summary, adminNotes, profile]);
+  }, [eligibleCreators, selectedMonth, selectedYear, gradeRequirements, summary, adminNotes, profile]);
+
+  const handleResetSave = useCallback(() => {
+    setIsSaved(false);
+    setSaveError('');
+    setSaveSuccess('');
+  }, []);
 
   const handleExportExcel = useCallback(async () => {
     const XLSX = await import('xlsx');
@@ -494,44 +506,38 @@ const BonusCalculatorRefactored = ({ onCalculationComplete }) => {
     }));
   }, []);
 
-  const handleBonusTableChange = useCallback((grade, index, field, value) => {
-    setBonusTable(prev => ({
-      ...prev,
-      [grade]: prev[grade].map((tier, idx) => 
-        idx === index 
-          ? { ...tier, [field]: parseInt(value) || 0 }
-          : tier
-      )
-    }));
-  }, []);
-
-  const saveRules = useCallback(async () => {
-    setRulesLoading(true);
-    setRulesError('');
-    setRulesSuccess('');
-    
+  // Load rules from database
+  const loadRules = useCallback(async () => {
+    setAuditLoading(true);
     try {
-      const rulesData = {
-        grade_requirements: gradeRequirements,
-        bonus_table: bonusTable,
-        updated_at: new Date().toISOString()
-      };
-      
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('bonus_rules')
-        .upsert(rulesData);
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .single();
         
-      if (error) throw error;
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+        throw error;
+      }
       
-      setRulesSuccess('Rules saved successfully!');
-      setTimeout(() => setRulesSuccess(''), 3000);
+      if (data) {
+        // Update requirements
+        if (data.requirements) {
+          setGradeRequirements(data.requirements);
+        }
+        
+        console.log('✅ Rules loaded from database:', data);
+      } else {
+        console.log('ℹ️ No rules found in database, using defaults');
+      }
     } catch (error) {
-      setRulesError('Failed to save rules: ' + error.message);
-      setTimeout(() => setRulesError(''), 5000);
+      console.error('❌ Failed to load rules:', error);
+      setStatusError('Failed to load rules from database');
     } finally {
-      setRulesLoading(false);
+      setAuditLoading(false);
     }
-  }, [gradeRequirements, bonusTable]);
+  }, []);
 
   const handleClearSelection = useCallback(() => {
     setSelectedRows([]);
@@ -547,6 +553,11 @@ const BonusCalculatorRefactored = ({ onCalculationComplete }) => {
       setTimeout(() => setStatusSuccess(''), 2000);
     }
   }, [statusSuccess]);
+
+  // Load rules on component mount
+  useEffect(() => {
+    loadRules();
+  }, [loadRules]);
 
   return (
     <>
@@ -620,7 +631,7 @@ const BonusCalculatorRefactored = ({ onCalculationComplete }) => {
 
       {/* Summary Stats */}
       {Object.keys(summary).length > 0 && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           <div className="bg-blue-50 p-3 rounded-lg border">
             <Users className="text-blue-600 mb-1" size={20} />
             <div className="text-xl font-bold">{summary.totalCreators}</div>
@@ -648,25 +659,76 @@ const BonusCalculatorRefactored = ({ onCalculationComplete }) => {
             </div>
             <div className="text-xs text-gray-600">Total Bonus</div>
           </div>
+          <div className={`p-3 rounded-lg border ${isSaved ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200'}`}>
+            <div className="flex items-center justify-center">
+              {isSaved ? (
+                <CheckCircle className="text-green-600 mb-1" size={20} />
+              ) : (
+                <AlertCircle className="text-orange-600 mb-1" size={20} />
+              )}
+            </div>
+            <div className="text-xs text-center font-medium">
+              {isSaved ? 'Saved to DB' : 'Not Saved'}
+            </div>
+          </div>
         </div>
       )}
 
       {/* Action Buttons */}
       {eligibleCreators.length > 0 && (
         <CompactCard title="Actions" compact>
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={handleSaveToDatabase} variant="success" loading={loading} size="sm">
-              <CheckCircle size={16} /> Save to DB
-            </Button>
-            <Button onClick={handleExportExcel} variant="primary" size="sm">
-              <Download size={16} /> Export Excel
-            </Button>
-            <Button onClick={() => handleCopyByGrade('A')} variant="primary" size="sm" disabled={summary.gradeA === 0}>
-              Copy Grade A ({summary.gradeA})
-            </Button>
-            <Button onClick={handleCopyAllMessages} variant={bulkCopyMode ? 'success' : 'secondary'} size="sm">
-              <Copy size={16} /> {bulkCopyMode ? 'Copied All!' : 'Copy All Messages'}
-            </Button>
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={handleSaveToDatabase} variant="success" loading={saveLoading} size="sm" disabled={isSaved}>
+                <CheckCircle size={16} /> {isSaved ? 'Saved!' : 'Save to DB'}
+              </Button>
+              {isSaved && (
+                <Button onClick={handleResetSave} variant="secondary" size="sm">
+                  <Settings size={16} /> Reset Save
+                </Button>
+              )}
+              <Button onClick={handleExportExcel} variant="primary" size="sm">
+                <Download size={16} /> Export Excel
+              </Button>
+              <Button onClick={() => handleCopyByGrade('A')} variant="primary" size="sm" disabled={summary.gradeA === 0}>
+                Copy Grade A ({summary.gradeA})
+              </Button>
+              <Button onClick={handleCopyAllMessages} variant={bulkCopyMode ? 'success' : 'secondary'} size="sm">
+                <Copy size={16} /> {bulkCopyMode ? 'Copied All!' : 'Copy All Messages'}
+              </Button>
+            </div>
+            
+            {/* Progress Bar */}
+            {saveLoading && saveProgress.total > 0 && (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Saving creator {saveProgress.current} of {saveProgress.total}...</span>
+                  <span>{Math.round((saveProgress.current / saveProgress.total) * 100)}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${(saveProgress.current / saveProgress.total) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            )}
+            
+            {/* Error Message */}
+            {saveError && (
+              <div className="flex items-center p-3 bg-red-50 text-red-700 rounded-lg">
+                <AlertCircle className="w-5 h-5 mr-2" />
+                {saveError}
+              </div>
+            )}
+            
+            {/* Success Message */}
+            {saveSuccess && (
+              <div className="flex items-center p-3 bg-green-50 text-green-700 rounded-lg">
+                <CheckCircle className="w-5 h-5 mr-2" />
+                {saveSuccess}
+              </div>
+            )}
           </div>
         </CompactCard>
       )}
@@ -704,57 +766,11 @@ const BonusCalculatorRefactored = ({ onCalculationComplete }) => {
             </div>
 
             {/* Table */}
-            <CompactTable compact>
-              <CompactTable.Head>
-                <CompactTable.Row>
-                  <CompactTable.Header><input type="checkbox" ref={selectAllRef} checked={selectedRows.length === eligibleCreators.length && eligibleCreators.length > 0} onChange={handleSelectAll} /></CompactTable.Header>
-                  <CompactTable.Header>No</CompactTable.Header>
-                  <CompactTable.Header>Username</CompactTable.Header>
-                  <CompactTable.Header>Performance</CompactTable.Header>
-                  <CompactTable.Header>Coins</CompactTable.Header>
-                  <CompactTable.Header>Grade</CompactTable.Header>
-                  <CompactTable.Header>Bonus</CompactTable.Header>
-                  <CompactTable.Header>WhatsApp</CompactTable.Header>
-                  <CompactTable.Header>Status</CompactTable.Header>
-                </CompactTable.Row>
-              </CompactTable.Head>
-              <CompactTable.Body>
-                {paginatedCreators.map((creator, idx) => (
-                  <CompactTable.Row key={creator.creatorId || idx} className={highlightedRows.includes(creator.creatorId) ? 'bg-green-50 animate-pulse' : ''}>
-                    <CompactTable.Cell><input type="checkbox" checked={selectedRows.includes(creator.creatorId)} onChange={() => handleSelectRow(creator.creatorId)} /></CompactTable.Cell>
-                    <CompactTable.Cell>{(currentPage - 1) * pageSize + idx + 1}</CompactTable.Cell>
-                    <CompactTable.Cell className="font-medium">{creator.username}</CompactTable.Cell>
-                    <CompactTable.Cell>
-                      <div className="text-xs">
-                        <div>📅 {creator.validDays}d</div>
-                        <div>⏱️ {creator.liveHours.toFixed(1)}h</div>
-                      </div>
-                    </CompactTable.Cell>
-                    <CompactTable.Cell className="font-medium">{creator.diamonds.toLocaleString('id-ID')}</CompactTable.Cell>
-                    <CompactTable.Cell className="font-semibold">{creator.grade}</CompactTable.Cell>
-                    <CompactTable.Cell className="font-bold text-green-600">Rp {creator.bonusAmount?.toLocaleString('id-ID')}</CompactTable.Cell>
-                    <CompactTable.Cell>
-                      <Button
-                        onClick={() => handleCopyMessage(creator, idx)}
-                        variant={copiedIndex === idx ? 'success' : 'primary'}
-                        size="sm"
-                        className="text-xs"
-                      >
-                        {copiedIndex === idx ? <CheckCircle size={12} /> : <Copy size={12} />}
-                        {copiedIndex === idx ? 'Copied!' : 'Copy'}
-                      </Button>
-                    </CompactTable.Cell>
-                    <CompactTable.Cell>
-                      <select value={creator.paymentStatus} onChange={e => handleStatusChange(creator.creatorId, e.target.value)} className="border rounded p-1 text-xs">
-                        <option value="pending">Pending</option>
-                        <option value="paid">Paid</option>
-                        <option value="failed">Failed</option>
-                      </select>
-                    </CompactTable.Cell>
-                  </CompactTable.Row>
-                ))}
-              </CompactTable.Body>
-            </CompactTable>
+            <EnhancedBonusTable
+              data={eligibleCreators}
+              loading={loading}
+              onRefresh={() => {/* reload data logic here */}}
+            />
 
             {/* Pagination */}
             {totalPages > 1 && (
@@ -778,44 +794,6 @@ const BonusCalculatorRefactored = ({ onCalculationComplete }) => {
           </div>
         </CompactCard>
       )}
-
-      {/* Rules Editor */}
-      <CompactCard 
-        title="Bonus Rules (Editable)" 
-        compact
-        collapsible
-        defaultCollapsed={true}
-        actions={
-          <Button onClick={saveRules} size="sm" variant="primary" loading={rulesLoading}>
-            Save Rules
-          </Button>
-        }
-      >
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {['A','B','C'].map(grade => (
-            <div key={grade} className="bg-gray-50 p-3 rounded">
-              <div className="font-bold mb-2">Grade {grade}</div>
-              <div className="flex gap-2 mb-2">
-                <label className="text-xs">Days: <input type="number" className="w-12 border rounded p-1 text-xs" value={gradeRequirements[grade].days} onChange={e => handleGradeRequirementChange(grade, 'days', e.target.value)} /></label>
-                <label className="text-xs">Hours: <input type="number" className="w-12 border rounded p-1 text-xs" value={gradeRequirements[grade].hours} onChange={e => handleGradeRequirementChange(grade, 'hours', e.target.value)} /></label>
-              </div>
-              <table className="w-full text-xs">
-                <thead><tr><th>Coins</th><th>Bonus</th></tr></thead>
-                <tbody>
-                  {bonusTable[grade].map((tier, idx) => (
-                    <tr key={idx}>
-                      <td><input type="number" className="w-12 border rounded p-1 text-xs" value={tier.minCoins} onChange={e => handleBonusTableChange(grade, idx, 'minCoins', e.target.value)} /></td>
-                      <td><input type="number" className="w-12 border rounded p-1 text-xs" value={tier.bonus} onChange={e => handleBonusTableChange(grade, idx, 'bonus', e.target.value)} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ))}
-        </div>
-        {rulesSuccess && <div className="mt-2 text-green-600 text-sm">{rulesSuccess}</div>}
-        {rulesError && <div className="mt-2 text-red-600 text-sm">{rulesError}</div>}
-      </CompactCard>
 
       {/* Admin Notes */}
       <CompactCard title="Admin Notes" compact>
