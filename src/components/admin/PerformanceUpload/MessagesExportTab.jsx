@@ -27,11 +27,93 @@ const MessagesExportTab = ({ uploadedData, messages, onMessagesGenerated, onSave
   const [saveSuccess, setSaveSuccess] = useState('');
   const [isSaved, setIsSaved] = useState(false);
 
-  useEffect(() => {
-    if (uploadedData.length > 0) {
-      generateAdvancedMessages(uploadedData);
+  // Utility to get value by possible keys (case-insensitive, trimmed)
+  const getValueByKeys = (obj, possibleKeys) => {
+    const keys = Object.keys(obj);
+    for (let key of keys) {
+      for (let possibleKey of possibleKeys) {
+        if (key.trim().toLowerCase() === possibleKey.trim().toLowerCase()) {
+          return obj[key];
+        }
+      }
     }
-  }, [uploadedData]);
+    return undefined;
+  };
+
+  // Ultra-robust normalization: always fall back to raw_data for key fields
+  const normalizeCreator = (creator) => ({
+    username_tiktok: creator.username_tiktok,
+    diamonds: creator.diamonds,
+    validDays: (creator.valid_days && creator.valid_days !== 0)
+      ? creator.valid_days
+      : (creator.raw_data && (creator.raw_data['Valid go LIVE days'] || creator.raw_data['Valid go LIVE days'.trim()])),
+    liveDuration: (creator.live_duration && creator.live_duration !== '0h 0m')
+      ? creator.live_duration
+      : (creator.raw_data && (creator.raw_data['LIVE duration'] || creator.raw_data['LIVE duration'.trim()])),
+    liveStreams: (creator.live_streams && creator.live_streams !== 0)
+      ? creator.live_streams
+      : (creator.raw_data && (creator.raw_data['LIVE streams'] || creator.raw_data['LIVE streams'.trim()])),
+    graduationStatus: creator.graduation_status,
+    diamondsVsLastMonth: creator.diamonds_vs_last_month,
+    durationVsLastMonth: creator.duration_vs_last_month,
+    newFollowers: creator.new_followers,
+    followersVsLastMonth: creator.followers_vs_last_month,
+    subscriptionRevenue: creator.subscription_revenue,
+    period: creator.period,
+    creator_id: creator.creator_id,
+    group: creator.konten_kategori || creator.group,
+    joined_time: creator.joined_date,
+    days_since_joining: creator.days_since_joining,
+    status: creator.status,
+    link_tiktok: creator.link_tiktok,
+    nomor_wa: creator.nomor_wa,
+    manager: creator.raw_data && creator.raw_data['Creator Network manager']
+  });
+
+  // Filter uploadedData to only include creators managed by mediaentertainmenttalentagency@gmail.com
+  const filteredData = uploadedData.filter(row => {
+    const manager = row.raw_data && row.raw_data['Creator Network manager'];
+    return manager && manager.trim().toLowerCase() === 'mediaentertainmenttalentagency@gmail.com';
+  });
+
+  // Map normalized data to table fields (only for filteredData)
+  const tableData = filteredData.map(row => {
+    const norm = normalizeCreator(row);
+    // Parse liveDuration to hours (number)
+    let liveHours = 0;
+    if (typeof norm.liveDuration === 'string') {
+      const hourMatch = norm.liveDuration.match(/(\d+)h/);
+      const minMatch = norm.liveDuration.match(/(\d+)m/);
+      liveHours = (hourMatch ? parseInt(hourMatch[1]) : 0) + (minMatch ? parseInt(minMatch[1]) / 60 : 0);
+    } else {
+      liveHours = Number(norm.liveDuration) || 0;
+    }
+    return {
+      username: norm.username_tiktok,
+      validDays: Number(norm.validDays) || 0,
+      liveHours,
+      diamonds: Number(norm.diamonds) || 0,
+      grade: norm.grade || '-',
+      breakdown: norm.breakdown || '-',
+      paymentStatus: norm.paymentStatus || '-',
+      // Add any other fields you want to show
+    };
+  });
+
+  // Use filteredData for all stats and message generation
+  const stats = {
+    totalMessages: tableData.length,
+    totalCreators: tableData.length,
+    topPerformers: Math.min(10, tableData.length),
+    templatesCount: templates.length,
+    isSaved: isSaved
+  };
+
+  useEffect(() => {
+    if (filteredData.length > 0) {
+      generateAdvancedMessages(filteredData);
+    }
+  }, [filteredData]);
 
   const parseLiveDuration = (duration) => {
     if (!duration) return '0 jam';
@@ -60,19 +142,80 @@ const MessagesExportTab = ({ uploadedData, messages, onMessagesGenerated, onSave
   };
 
   const generateAdvancedMessages = (data) => {
+    // Log the first row for debugging field names
+    if (data && data.length > 0) {
+      console.log('All keys in first row:', Object.keys(data[0]));
+      for (let i = 0; i < Math.min(5, data.length); i++) {
+        const row = data[i];
+        const norm = normalizeCreator(row);
+        console.log(`Row ${i}:`);
+        console.log('  Raw Valid go LIVE days:', row['Valid go LIVE days']);
+        console.log('  Raw LIVE duration:', row['LIVE duration']);
+        console.log('  Raw Creator Network manager:', row['Creator Network manager']);
+        console.log('  Normalized validDays:', norm.validDays);
+        console.log('  Normalized liveDuration:', norm.liveDuration);
+        console.log('  Normalized manager:', norm.manager);
+      }
+      console.log('All unique Creator Network manager values:', [...new Set(data.map(item => normalizeCreator(item).manager))]);
+    }
+    
+    // Filter data to only include creators managed by mediaentertainmenttalentagency@gmail.com
+    const filteredData = data.filter(creator => {
+      const managerValue = normalizeCreator(creator).manager;
+      console.log(`Checking creator ${normalizeCreator(creator).username_tiktok}: manager = "${managerValue}"`);
+      return managerValue && managerValue.toLowerCase().includes('mediaentertainmenttalentagency@gmail.com');
+    });
+    
+    console.log(`Filtered ${filteredData.length} creators out of ${data.length} total`);
+    
+    // If no creators found, use all data as fallback
+    const dataToUse = filteredData.length > 0 ? filteredData : data;
+    console.log(`Using ${dataToUse.length} creators for processing`);
+    
     // Sort data by diamonds in descending order
-    const sortedData = [...data].sort((a, b) => b.diamonds - a.diamonds);
+    const sortedData = [...dataToUse].map(normalizeCreator).sort((a, b) => b.diamonds - a.diamonds);
     
     // Generate personalized messages for top 10
     const top10Data = sortedData.slice(0, 10);
-    const personalizedMsgs = top10Data.map(creator => {
-      const liveDurationParsed = parseLiveDuration(creator.liveDuration);
-      const rank = sortedData.findIndex(c => c.username_tiktok === creator.username_tiktok) + 1;
-      
+    const personalizedMsgs = top10Data.map((creator, idx) => {
+      // Parse liveDuration to hours (number)
+      let liveHours = 0;
+      if (typeof creator.liveDuration === 'string') {
+        const hourMatch = creator.liveDuration.match(/(\d+)h/);
+        const minMatch = creator.liveDuration.match(/(\d+)m/);
+        liveHours = (hourMatch ? parseInt(hourMatch[1]) : 0) + (minMatch ? parseInt(minMatch[1]) / 60 : 0);
+      } else {
+        liveHours = Number(creator.liveDuration) || 0;
+      }
       return {
         username: creator.username_tiktok,
-        rank: rank,
-        message: `🎉 *CONGRATULATIONS @${creator.username_tiktok}!*\n\n🏆 *Rank #${rank}* in this month's performance!\n\n📊 *PERFORMANCE REPORT ${creator.period}*\n\n👤 *Creator:* @${creator.username_tiktok}\n🎓 *Status:* ${creator.graduationStatus}\n\n💎 *Diamonds:* ${creator.diamonds.toLocaleString('id-ID')}\n${creator.diamondsVsLastMonth.includes('-') ? '📉' : '📈'} *Vs Bulan Lalu:* ${creator.diamondsVsLastMonth}\n🎯 *Target Achieved:* ${creator.diamondsAchieved}\n\n📅 *Valid Days:* ${creator.validDays} hari\n⏱️ *Live Duration:* ${liveDurationParsed}\n${creator.durationVsLastMonth.includes('-') ? '📉' : '📈'} *Vs Bulan Lalu:* ${creator.durationVsLastMonth}\n\n👥 *New Followers:* ${creator.newFollowers.toLocaleString('id-ID')}\n${creator.followersVsLastMonth.includes('-') ? '📉' : '📈'} *Growth:* ${creator.followersVsLastMonth}\n\n🎬 *Total Streams:* ${creator.liveStreams}\n💰 *Subscription Revenue:* $${creator.subscriptionRevenue}\n\n${getMotivationalMessage(creator)}\n\n_Keep up the amazing work!_ 🚀`
+        rank: idx + 1,
+        message: `🎉 *CONGRATULATIONS @${creator.username_tiktok}!*
+
+🏆 *Rank #${idx + 1}* in this month's performance!
+
+📊 *PERFORMANCE REPORT ${creator.period}*
+
+👤 *Creator:* @${creator.username_tiktok}
+🎓 *Status:* ${creator.graduationStatus || '-'}
+
+💎 *Diamonds:* ${Number(creator.diamonds).toLocaleString('id-ID')}
+${typeof creator.diamondsVsLastMonth === 'string' && creator.diamondsVsLastMonth.includes('-') ? '📉' : '📈'} *Vs Bulan Lalu:* ${creator.diamondsVsLastMonth || '-'}
+🎯 *Target Achieved:* ${creator.diamondsAchieved || '-'}
+
+📅 *Valid Days:* ${creator.validDays || 0} hari
+⏱️ *Live Duration:* ${liveHours} jam
+${typeof creator.durationVsLastMonth === 'string' && creator.durationVsLastMonth.includes('-') ? '📉' : '📈'} *Vs Bulan Lalu:* ${creator.durationVsLastMonth || '-'}
+
+👥 *New Followers:* ${Number(creator.newFollowers)?.toLocaleString('id-ID') || '0'}
+${typeof creator.followersVsLastMonth === 'string' && creator.followersVsLastMonth.includes('-') ? '📉' : '📈'} *Growth:* ${creator.followersVsLastMonth || '-'}
+
+🎬 *Total Streams:* ${creator.liveStreams || 0}
+💰 *Subscription Revenue:* $${creator.subscriptionRevenue || 0}
+
+${getMotivationalMessage(creator)}
+
+_Keep up the amazing work!_`
       };
     });
     
@@ -84,7 +227,7 @@ const MessagesExportTab = ({ uploadedData, messages, onMessagesGenerated, onSave
       return `${rank}. @${creator.username_tiktok} - ${performanceSummary}`;
     });
     
-    const groupSummaryMsg = `📊 *MONTHLY PERFORMANCE REPORT - ALL CREATORS*\n\n*${data[0]?.period || 'Current Period'}*\n\n${groupSummaryLines.join('\n')}\n\n🏆 *Top 10 will receive personalized messages*\n\n_Great work everyone! Keep pushing forward!_ 🚀`;
+    const groupSummaryMsg = `📊 *MONTHLY PERFORMANCE REPORT - ALL CREATORS*\n\n*${dataToUse[0]?.period || 'Current Period'}*\n\n${groupSummaryLines.join('\n')}\n\n🏆 *Top 10 will receive personalized messages*\n\n_Great work everyone! Keep pushing forward!_ 🚀`;
     
     setPersonalizedMessages(personalizedMsgs);
     setGroupSummaryMessage(groupSummaryMsg);
@@ -101,14 +244,32 @@ const MessagesExportTab = ({ uploadedData, messages, onMessagesGenerated, onSave
       setSaveError('No data to save');
       return;
     }
+    for (let i = 0; i < Math.min(5, uploadedData.length); i++) {
+      const row = uploadedData[i];
+      const norm = normalizeCreator(row);
+      console.log(`[SAVE] Row ${i}:`);
+      console.log('  Raw Valid go LIVE days:', row['Valid go LIVE days']);
+      console.log('  Raw LIVE duration:', row['LIVE duration']);
+      console.log('  Raw Creator Network manager:', row['Creator Network manager']);
+      console.log('  Normalized validDays:', norm.validDays);
+      console.log('  Normalized liveDuration:', norm.liveDuration);
+      console.log('  Normalized manager:', norm.manager);
+    }
+
+    const filteredData = uploadedData.filter(creator => {
+      const managerValue = normalizeCreator(creator).manager;
+      return managerValue && managerValue.toLowerCase().includes('mediaentertainmenttalentagency@gmail.com');
+    });
+    const dataToUse = filteredData.length > 0 ? filteredData : uploadedData;
+    console.log(`Saving ${dataToUse.length} creators (filtered: ${filteredData.length}, total: ${uploadedData.length})`);
 
     setSaveLoading(true);
     setSaveError('');
     setSaveSuccess('');
-    setSaveProgress({ current: 0, total: uploadedData.length });
+    setSaveProgress({ current: 0, total: dataToUse.length });
 
     // Extract period, year, and month from uploaded data
-    const period = uploadedData[0]?.period || '';
+    const period = normalizeCreator(dataToUse[0]).period || '';
     const [year, month] = period.split('-').slice(0, 2);
 
     try {
@@ -118,35 +279,59 @@ const MessagesExportTab = ({ uploadedData, messages, onMessagesGenerated, onSave
         year: parseInt(year),
         month: parseInt(month),
         uploaded_at: new Date().toISOString(),
-        creators_count: uploadedData.length
+        creators_count: dataToUse.length
       });
 
       // Process each creator using centralized management
-      for (const [idx, creator] of uploadedData.entries()) {
+      for (const [idx, creator] of dataToUse.entries()) {
         try {
+          const normalizedCreator = normalizeCreator(creator);
+          
           // Use centralized creator management
           const { creator: dbCreator, error: creatorError } = await findOrCreateCreator({
-            creator_id: creator.creator_id,
-            username_tiktok: creator.username_tiktok,
-            followers_count: creator.followers_count,
-            konten_kategori: creator.konten_kategori,
-            game_preference: creator.game_preference,
-            joined_date: creator.joined_date,
-            days_since_joining: creator.days_since_joining,
-            graduation_status: creator.graduationStatus,
-            status: creator.status,
-            link_tiktok: creator.link_tiktok,
-            nomor_wa: creator.nomor_wa
+            creator_id: normalizedCreator.creator_id,
+            username_tiktok: normalizedCreator.username_tiktok,
+            followers_count: normalizedCreator.newFollowers,
+            konten_kategori: normalizedCreator.group || normalizedCreator.konten_kategori,
+            game_preference: normalizedCreator.game_preference,
+            joined_date: normalizedCreator.joined_time || normalizedCreator.joined_date,
+            days_since_joining: normalizedCreator.days_since_joining,
+            graduation_status: normalizedCreator.graduationStatus,
+            status: normalizedCreator.status,
+            link_tiktok: normalizedCreator.link_tiktok,
+            nomor_wa: normalizedCreator.nomor_wa
           });
           
           if (creatorError) {
-            console.error(`Error managing creator ${creator.username_tiktok}:`, creatorError);
+            console.error(`Error managing creator ${normalizedCreator.username_tiktok}:`, creatorError);
             continue;
           }
           
           if (!dbCreator) {
-            console.error(`Failed to get/create creator for ${creator.username_tiktok}`);
+            console.error(`Failed to get/create creator for ${normalizedCreator.username_tiktok}`);
             continue;
+          }
+          
+          // Parse live duration to extract hours
+          let liveHours = 0;
+          if (normalizedCreator.liveDuration) {
+            const durationStr = String(normalizedCreator.liveDuration);
+            const hoursMatch = durationStr.match(/(\d+)h/);
+            const minutesMatch = durationStr.match(/(\d+)m/);
+            if (hoursMatch) {
+              liveHours = parseInt(hoursMatch[1]);
+              if (minutesMatch) {
+                liveHours += parseInt(minutesMatch[1]) / 60;
+              }
+            } else if (minutesMatch) {
+              liveHours = parseInt(minutesMatch[1]) / 60;
+            } else {
+              // Try to parse as number
+              const numMatch = durationStr.match(/(\d+(?:\.\d+)?)/);
+              if (numMatch) {
+                liveHours = parseFloat(numMatch[1]);
+              }
+            }
           }
           
           // Insert performance data using the internal database ID (foreign key constraint requirement)
@@ -154,11 +339,13 @@ const MessagesExportTab = ({ uploadedData, messages, onMessagesGenerated, onSave
             creator_id: dbCreator.id, // Use internal database ID for foreign key relationship
             period_month: parseInt(month),
             period_year: parseInt(year),
-            diamonds: creator.diamonds,
-            valid_days: creator.validDays,
-            live_hours: parseFloat(creator.liveDuration?.match(/(\d+)/)?.[1] || 0),
-            new_followers: creator.newFollowers,
-            diamonds_vs_last_month: parseFloat((creator.diamondsVsLastMonth || '').replace('%','')),
+            diamonds: normalizedCreator.diamonds,
+            valid_days: normalizedCreator.validDays,
+            live_hours: liveHours,
+            new_followers: normalizedCreator.newFollowers,
+            diamonds_vs_last_month: parseFloat((normalizedCreator.diamondsVsLastMonth || '').replace('%','').replace('+','')),
+            live_streams: normalizedCreator.liveStreams,
+            subscription_revenue: normalizedCreator.subscriptionRevenue,
             raw_data: creator
           };
           
@@ -167,19 +354,19 @@ const MessagesExportTab = ({ uploadedData, messages, onMessagesGenerated, onSave
             .insert(perfData);
           
           if (perfError) {
-            console.error(`Performance save error for ${creator.username_tiktok}:`, perfError);
+            console.error(`Performance save error for ${normalizedCreator.username_tiktok}:`, perfError);
           }
           
         } catch (error) {
-          console.error(`Error processing ${creator.username_tiktok}:`, error);
+          console.error(`Error processing ${creator['Creator\'s username'] || creator.username_tiktok}:`, error);
         }
         
         setSaveProgress(prev => ({ ...prev, current: idx + 1 }));
       }
       
-      setSaveSuccess(`🎉 Successfully saved ${uploadedData.length} creators to database!`);
+      setSaveSuccess(`🎉 Successfully saved ${dataToUse.length} creators to database!`);
       setIsSaved(true);
-      showNotification(`Successfully saved ${uploadedData.length} creators to database!`, 'success');
+      showNotification(`Successfully saved ${dataToUse.length} creators to database!`, 'success');
       
       if (onSaveComplete) {
         onSaveComplete();
@@ -299,20 +486,17 @@ const MessagesExportTab = ({ uploadedData, messages, onMessagesGenerated, onSave
     showNotification('Messages exported successfully!');
   };
 
-  const stats = {
-    totalMessages: personalizedMessages.length,
-    totalCreators: uploadedData.length,
-    topPerformers: personalizedMessages.length,
-    templatesCount: templates.length,
-    isSaved: isSaved
-  };
+  // Debug: Print first 3 rows of uploadedData directly after upload
+  if (uploadedData && uploadedData.length > 0) {
+    console.log('First 3 rows of uploadedData (raw):', uploadedData.slice(0, 3));
+  }
 
-  if (uploadedData.length === 0) {
+  if (filteredData.length === 0) {
     return (
       <div className="text-center py-12">
         <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">No Data Available</h3>
-        <p className="text-gray-500 mb-6">Upload performance data first to generate messages</p>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">No Eligible Creators</h3>
+        <p className="text-gray-500 mb-6">No creators matched the manager filter. Please check your upload.</p>
         <Button onClick={() => window.location.reload()} variant="primary">
           Go to Upload Tab
         </Button>
@@ -569,7 +753,7 @@ const MessagesExportTab = ({ uploadedData, messages, onMessagesGenerated, onSave
 
       {/* Enhanced Performance Table */}
       <EnhancedPerformanceTable
-        data={uploadedData}
+        data={tableData}
         loading={loading}
         onRefresh={() => {/* reload data logic here */}}
       />
