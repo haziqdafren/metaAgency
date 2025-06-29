@@ -34,7 +34,7 @@ const lazyLoad = (importFunc, retries = 3) => {
 const Home = lazyLoad(() => import('./pages/public/Home'));
 const AboutPage = lazyLoad(() => import('./pages/public/AboutPage'));
 const ServicesPage = lazyLoad(() => import('./pages/public/ServicesPage'));
-const PublicArticles = lazyLoad(() => import('./pages/public/Articles'));
+const PublicArticles = lazyLoad(() => import('./pages/public/ArticlesEnhanced'));
 const JoinPage = lazyLoad(() => import('./pages/public/JoinPage'));
 const ContactPage = lazyLoad(() => import('./pages/public/ContactPage'));
 const FAQ = lazyLoad(() => import('./pages/public/FAQ'));
@@ -44,7 +44,7 @@ const Terms = lazyLoad(() => import('./pages/public/Terms'));
 const Disclaimer = lazyLoad(() => import('./pages/public/Disclaimer'));
 const LoginPage = lazyLoad(() => import('./pages/auth/LoginPage'));
 const NotFound = lazyLoad(() => import('./pages/public/NotFound'));
-const BonusContent = lazyLoad(() => import('./pages/public/BonusContent'));
+const BonusContent = lazyLoad(() => import('./pages/public/BonusContentEnhanced'));
 const ArticleDetail = lazyLoad(() => import('./pages/public/ArticleDetail'));
 
 // Protected Pages
