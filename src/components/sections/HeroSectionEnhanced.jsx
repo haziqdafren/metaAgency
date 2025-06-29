@@ -12,6 +12,7 @@ const HeroSectionEnhanced = () => {
   const { theme } = useThemeStore();
   const controls = useAnimation();
   
+  
   const stats = [
     { icon: Users, label: 'Active Creators', value: '10,000+', color: 'text-meta-blue', bgColor: 'bg-blue-500/10' },
     { icon: TrendingUp, label: 'Monthly Revenue', value: 'Rp 5B+', color: 'text-green-500', bgColor: 'bg-green-500/10' },

@@ -6,7 +6,7 @@ import useThemeStore from '../../store/themeStore';
 const TestimonialsSection = () => {
   const testimonials = [
     {
-      name: 'Sarah Johnson',
+      name: 'Dwi Sari',
       role: 'Lifestyle Creator',
       followers: '2.5M',
       image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
@@ -14,7 +14,7 @@ const TestimonialsSection = () => {
       rating: 5,
     },
     {
-      name: 'Michael Chen',
+      name: 'Budi Sutiono',
       role: 'Tech Reviewer',
       followers: '1.8M',
       image: 'https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
@@ -22,7 +22,7 @@ const TestimonialsSection = () => {
       rating: 5,
     },
     {
-      name: 'Emma Rodriguez',
+      name: 'Eka Pramudi',
       role: 'Fashion Influencer',
       followers: '3.2M',
       image: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',

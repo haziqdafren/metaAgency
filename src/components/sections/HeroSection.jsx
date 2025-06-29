@@ -11,9 +11,18 @@ const HeroSection = () => {
   const [currentStat, setCurrentStat] = useState(0);
   const { theme } = useThemeStore();
   
+  const RpIcon = () => (
+    <span
+      className="inline-flex items-center justify-center w-6 h-6 text-[22px] font-bold leading-none gap-2"
+      style={{ fontFamily: 'inherit' }}
+    >
+      Rp
+    </span>
+  );
+  
   const stats = [
     { icon: Users, label: 'Active Creators', value: '800+', color: 'text-meta-blue' },
-    { icon: TrendingUp, label: 'Monthly Revenue', value: 'Rp. 100M+', color: 'text-green-500' },
+    { icon: RpIcon, label: 'Monthly Revenue', value: 'Rp. 100M+', color: 'text-green-500' },
     { icon: Award, label: 'Success Rate', value: '95%', color: 'text-yellow-500' },
   ];
 
