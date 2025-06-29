@@ -21,25 +21,17 @@ const Footer = () => {
     company: [
       { label: 'Tentang Kami', href: '/about' },
       { label: 'Layanan', href: '/services' },
-      { label: 'Karir', href: '/careers' },
       { label: 'Kontak', href: '/contact' },
     ],
     talent: [
       { label: 'Gabung Sekarang', href: '/join' },
-      { label: 'Portal Talent', href: '/login' },
       { label: 'Panduan Creator', href: '/articles?category=panduan-streaming' },
-      { label: 'FAQ', href: '/faq' },
     ],
     resources: [
-      { label: 'Artikel', href: '/articles' },
-      { label: 'Kebijakan TikTok', href: '/articles?category=kebijakan-tiktok' },
-      { label: 'Tips Algoritma', href: '/articles?category=tips-algoritma' },
-      { label: 'Success Stories', href: '/articles?category=success-story' },
     ],
     legal: [
       { label: 'Kebijakan Privasi', href: '/privacy' },
       { label: 'Syarat & Ketentuan', href: '/terms' },
-      { label: 'Disclaimer', href: '/disclaimer' },
     ],
   };
 
@@ -84,20 +76,21 @@ const Footer = () => {
               {/* Contact Info */}
               <div className="space-y-3">
                 <a 
-                  href="mailto:info@metaagency.id" 
+                  // href="mailto:info@metaagency.id" 
                   className={`flex items-center space-x-2 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-meta-blue focus-visible:ring-offset-2 ${theme === 'dark' ? 'text-meta-gray-400 hover:text-white' : 'text-meta-black hover:text-meta-black'}`}
                 >
                   <Mail className="w-4 h-4" />
                   <span>info@metaagency.id</span>
                 </a>
                 <a 
-                  href="tel:+6281234567890" 
+                  // href="tel:+6281234567890" 
                   className={`flex items-center space-x-2 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-meta-blue focus-visible:ring-offset-2 ${theme === 'dark' ? 'text-meta-gray-400 hover:text-white' : 'text-meta-black hover:text-meta-black'}`}
                 >
                   <Phone className="w-4 h-4" />
                   <span>+62 812-3456-7890</span>
                 </a>
-                <div className={`flex items-start space-x-2 text-sm ${theme === 'dark' ? 'text-meta-gray-400' : 'text-meta-black'}`}>
+                <div className={`flex items-center space-x-2 text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-meta-blue focus-visible:ring-offset-2 ${theme === 'dark' ? 'text-meta-gray-400 hover:text-white' : 'text-meta-black hover:text-meta-black'}`}
+                >
                   <MapPin className="w-4 h-4 mt-0.5" />
                   <span>Pekanbaru, Riau, Indonesia</span>
                 </div>
@@ -137,22 +130,7 @@ const Footer = () => {
               </ul>
             </div>
 
-            <div>
-              <h3 className={`font-semibold mb-4 transition-colors duration-500 ${theme === 'dark' ? 'text-white' : 'text-meta-black'}`}>Resources</h3>
-              <ul className="space-y-2">
-                {footerLinks.resources.map((link) => (
-                  <li key={link.href}>
-                    <Link 
-                      to={link.href}
-                      className={`text-sm transition-colors ${theme === 'dark' ? 'text-meta-gray-400 hover:text-white' : 'text-meta-black hover:text-meta-black'}`}
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
+            
             <div>
               <h3 className={`font-semibold mb-4 transition-colors duration-500 ${theme === 'dark' ? 'text-white' : 'text-meta-black'}`}>Legal</h3>
               <ul className="space-y-2">
