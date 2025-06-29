@@ -249,107 +249,107 @@ const EnhancedTalentTable = ({
         data={talentsWithActions}
         columns={[
           ...[
-            {
-              key: 'username_tiktok',
-              title: 'Username',
-              sortable: true,
-              filterable: true,
-              render: (value, row) => (
-                <div className="flex items-center gap-2">
-                  <a
-                    href={row.link_tiktok || `https://www.tiktok.com/@${value}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-meta-primary hover:text-meta-primary-dark font-medium flex items-center gap-1"
+    {
+      key: 'username_tiktok',
+      title: 'Username',
+      sortable: true,
+      filterable: true,
+      render: (value, row) => (
+        <div className="flex items-center gap-2">
+          <a
+            href={row.link_tiktok || `https://www.tiktok.com/@${value}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-meta-primary hover:text-meta-primary-dark font-medium flex items-center gap-1"
                     onClick={e => e.stopPropagation()}
-                  >
-                    @{value}
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-              )
-            },
-            columnHelpers.numberColumn('followers_count', 'Followers', {
+          >
+            @{value}
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        </div>
+      )
+    },
+    columnHelpers.numberColumn('followers_count', 'Followers', {
               render: value => <span className="font-medium">{value ? value.toLocaleString('id-ID') : '0'}</span>
-            }),
-            columnHelpers.statusColumn('konten_kategori', 'Category', {
-              gaming: { label: 'Gaming', className: 'bg-purple-100 text-purple-800' },
-              entertainment: { label: 'Entertainment', className: 'bg-pink-100 text-pink-800' },
-              lifestyle: { label: 'Lifestyle', className: 'bg-green-100 text-green-800' },
-              education: { label: 'Education', className: 'bg-blue-100 text-blue-800' },
-              music: { label: 'Music', className: 'bg-yellow-100 text-yellow-800' },
-              other: { label: 'Other', className: 'bg-gray-100 text-gray-800' }
-            }),
-            {
-              key: 'game_preference',
-              title: 'Games',
-              sortable: true,
-              filterable: true,
+    }),
+    columnHelpers.statusColumn('konten_kategori', 'Category', {
+      gaming: { label: 'Gaming', className: 'bg-purple-100 text-purple-800' },
+      entertainment: { label: 'Entertainment', className: 'bg-pink-100 text-pink-800' },
+      lifestyle: { label: 'Lifestyle', className: 'bg-green-100 text-green-800' },
+      education: { label: 'Education', className: 'bg-blue-100 text-blue-800' },
+      music: { label: 'Music', className: 'bg-yellow-100 text-yellow-800' },
+      other: { label: 'Other', className: 'bg-gray-100 text-gray-800' }
+    }),
+    {
+      key: 'game_preference',
+      title: 'Games',
+      sortable: true,
+      filterable: true,
               render: value => <span className="text-sm text-gray-600">{value || 'N/A'}</span>
-            },
-            columnHelpers.statusColumn('status', 'Status', {
-              active: { label: 'Active', className: 'bg-green-100 text-green-800' },
-              inactive: { label: 'Inactive', className: 'bg-gray-100 text-gray-800' },
-              needs_tiktok_id: { label: 'Needs TikTok ID', className: 'bg-orange-100 text-orange-800' }
-            }),
-            {
-              key: 'performance',
-              title: 'Recent Performance',
-              sortable: false,
-              filterable: false,
-              render: (value, row) => {
-                if (!row.latestDiamonds && !row.latestValidDays) {
-                  return <span className="text-gray-400 text-sm">No data</span>;
-                }
-                return (
-                  <div className="text-xs space-y-1">
-                    {row.latestDiamonds > 0 && (
-                      <div className="flex items-center gap-1">
-                        <span className="text-meta-primary">💎</span>
-                        <span className="font-medium">{row.latestDiamonds.toLocaleString('id-ID')}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <span>📅 {row.latestValidDays || 0}d</span>
-                      <span>⏱️ {row.latestLiveHours || 0}h</span>
-                    </div>
-                  </div>
-                );
-              }
-            },
-            {
-              key: 'contact',
-              title: 'Contact',
-              sortable: false,
-              filterable: false,
-              render: (value, row) => (
-                <div className="flex items-center gap-1">
-                  {row.nomor_wa && (
-                    <a
-                      href={`https://wa.me/${row.nomor_wa.replace(/\D/g, '')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-green-600 hover:text-green-700 p-1 rounded hover:bg-green-50"
+    },
+    columnHelpers.statusColumn('status', 'Status', {
+      active: { label: 'Active', className: 'bg-green-100 text-green-800' },
+      inactive: { label: 'Inactive', className: 'bg-gray-100 text-gray-800' },
+      needs_tiktok_id: { label: 'Needs TikTok ID', className: 'bg-orange-100 text-orange-800' }
+    }),
+    {
+      key: 'performance',
+      title: 'Recent Performance',
+      sortable: false,
+      filterable: false,
+      render: (value, row) => {
+        if (!row.latestDiamonds && !row.latestValidDays) {
+          return <span className="text-gray-400 text-sm">No data</span>;
+        }
+        return (
+          <div className="text-xs space-y-1">
+            {row.latestDiamonds > 0 && (
+              <div className="flex items-center gap-1">
+                <span className="text-meta-primary">💎</span>
+                <span className="font-medium">{row.latestDiamonds.toLocaleString('id-ID')}</span>
+              </div>
+            )}
+            <div className="flex items-center gap-2 text-gray-600">
+              <span>📅 {row.latestValidDays || 0}d</span>
+              <span>⏱️ {row.latestLiveHours || 0}h</span>
+            </div>
+          </div>
+        );
+      }
+    },
+    {
+      key: 'contact',
+      title: 'Contact',
+      sortable: false,
+      filterable: false,
+      render: (value, row) => (
+        <div className="flex items-center gap-1">
+          {row.nomor_wa && (
+            <a
+              href={`https://wa.me/${row.nomor_wa.replace(/\D/g, '')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-green-600 hover:text-green-700 p-1 rounded hover:bg-green-50"
                       onClick={e => e.stopPropagation()}
-                      title="Chat on WhatsApp"
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                    </a>
-                  )}
-                  {row.link_tiktok && (
-                    <a
-                      href={row.link_tiktok}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-meta-primary hover:text-meta-primary-dark p-1 rounded hover:bg-blue-50"
+              title="Chat on WhatsApp"
+            >
+              <MessageCircle className="w-4 h-4" />
+            </a>
+          )}
+          {row.link_tiktok && (
+            <a
+              href={row.link_tiktok}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-meta-primary hover:text-meta-primary-dark p-1 rounded hover:bg-blue-50"
                       onClick={e => e.stopPropagation()}
-                      title="View TikTok Profile"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-                  )}
-                </div>
-              )
+              title="View TikTok Profile"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </a>
+          )}
+        </div>
+      )
             }
           ]
         ]}
@@ -357,16 +357,16 @@ const EnhancedTalentTable = ({
         bulkActions={[]}
         exportOptions={['excel', 'csv']}
         onRowClick={onTalentClick}
-        selectable={true}
-        sortable={true}
-        filterable={true}
-        loading={loading}
-        emptyState={<EmptyState />}
+      selectable={true}
+      sortable={true}
+      filterable={true}
+      loading={loading}
+      emptyState={<EmptyState />}
         pagination={{ pageSize: 15, showSizeSelector: true }}
-        mobileOptimized={true}
-        compact={false}
+      mobileOptimized={true}
+      compact={false}
         renderActions={renderActions}
-      />
+    />
     </div>
   );
 };
