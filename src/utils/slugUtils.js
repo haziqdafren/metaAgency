@@ -3,7 +3,7 @@
 export const generateSlug = (title) => {
   if (!title) return '';
   
-  return title
+  let slug = title
     .toLowerCase()
     .trim()
     // Replace Indonesian characters
@@ -20,11 +20,37 @@ export const generateSlug = (title) => {
     .replace(/^-+|-+$/g, '')
     // Remove consecutive hyphens
     .replace(/-+/g, '-');
+  
+  // Ensure minimum length (3 characters)
+  if (slug.length < 3) {
+    slug = slug + '-article';
+  }
+  
+  // Ensure it doesn't end with just numbers or single characters
+  if (/^[a-z0-9]$/.test(slug) || /^\d+$/.test(slug)) {
+    slug = slug + '-post';
+  }
+  
+  return slug;
 };
 
 export const validateSlug = (slug) => {
+  if (!slug || typeof slug !== 'string') return false;
+  
   const validSlugPattern = /^[a-z0-9-]+$/;
-  return validSlugPattern.test(slug) && slug.length >= 3;
+  const isValidPattern = validSlugPattern.test(slug);
+  const isValidLength = slug.length >= 3 && slug.length <= 100;
+  const doesntStartOrEndWithHyphen = !slug.startsWith('-') && !slug.endsWith('-');
+  const hasNoConsecutiveHyphens = !slug.includes('--');
+  const isNotJustNumbers = !/^\d+$/.test(slug);
+  const isNotJustSingleChar = slug.length > 1;
+  
+  return isValidPattern && 
+         isValidLength && 
+         doesntStartOrEndWithHyphen && 
+         hasNoConsecutiveHyphens && 
+         isNotJustNumbers && 
+         isNotJustSingleChar;
 };
 
 export const isSlugUnique = async (slug, articleId = null, supabase) => {

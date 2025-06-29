@@ -3,9 +3,9 @@ import { supabase } from '../../lib/supabase';
 import Notification from '../../components/common/Notification';
 import { AnimatePresence } from 'framer-motion';
 import EnhancedArticlesTable from '../../components/admin/EnhancedArticlesTable';
-import EnhancedArticleForm from '../../components/admin/EnhancedArticleForm';
+import SimpleArticleForm from '../../components/admin/SimpleArticleForm';
 import CompactCard from '../../components/admin/CompactCard';
-import { generateUniqueSlug } from '../../utils/slugUtils';
+// Removed generateUniqueSlug import - now handled in SimpleArticleForm
 
 const AdminArticles = () => {
   const [articles, setArticles] = useState([]);
@@ -24,18 +24,45 @@ const AdminArticles = () => {
 
   const fetchArticles = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('articles')
-      .select(`
-        *,
-        categories:article_category_relations(
-          category:article_categories(*)
-        )
-      `)
-      .order('created_at', { ascending: false });
+    
+    console.log('🔄 Fetching articles for admin...');
+    
+    try {
+      // Fetch articles and categories separately to avoid relationship conflicts
+      const { data: articlesData, error: articlesError } = await supabase
+        .from('articles')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    if (error) setNotification({ message: error.message, type: 'error', isVisible: true });
-    else setArticles(data);
+      if (articlesError) {
+        throw articlesError;
+      }
+
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('article_categories')
+        .select('*');
+
+      if (categoriesError) {
+        throw categoriesError;
+      }
+
+      // Manually join the data
+      const processedData = articlesData?.map(article => {
+        const category = categoriesData?.find(cat => cat.id === article.category_id);
+        return {
+          ...article,
+          category: category || null
+        };
+      }) || [];
+
+      console.log(`✅ Successfully fetched ${processedData.length} articles with categories`);
+      setArticles(processedData);
+
+    } catch (error) {
+      console.error('❌ Error fetching articles:', error);
+      setNotification({ message: error.message, type: 'error', isVisible: true });
+    }
+    
     setLoading(false);
   };
 
@@ -55,16 +82,10 @@ const AdminArticles = () => {
   };
 
   const handleEdit = async (article) => {
-    // Fetch full article data with categories
+    // Fetch full article data
     const { data: fullArticle } = await supabase
       .from('articles')
-      .select(`
-        *,
-        categories:article_category_relations(
-          category_id,
-          category:article_categories(*)
-        )
-      `)
+      .select('*')
       .eq('id', article.id)
       .single();
     
@@ -177,12 +198,18 @@ const AdminArticles = () => {
     setFormLoading(true);
     
     try {
-      const { selectedCategories, ...articleData } = formData;
-      
-      // Generate slug if not provided
-      if (!articleData.slug && articleData.title) {
-        articleData.slug = await generateUniqueSlug(articleData.title, editingArticle?.id, supabase);
-      }
+      // Prepare simple article data
+      const articleData = {
+        title: formData.title,
+        slug: formData.slug,
+        content: formData.content,
+        excerpt: formData.excerpt || null,
+        type: formData.type || 'article',
+        access: formData.access || 'public',
+        published_at: formData.published_at || new Date().toISOString(),
+        category_id: formData.category_id || null,
+        featured_image: formData.featured_image || null
+      };
       
       let result;
       
@@ -192,42 +219,12 @@ const AdminArticles = () => {
           .from('articles')
           .update(articleData)
           .eq('id', editingArticle.id);
-          
-        if (!result.error) {
-          // Update categories
-          await supabase
-            .from('article_category_relations')
-            .delete()
-            .eq('article_id', editingArticle.id);
-            
-          if (selectedCategories.length > 0) {
-            await supabase
-              .from('article_category_relations')
-              .insert(
-                selectedCategories.map(categoryId => ({
-                  article_id: editingArticle.id,
-                  category_id: categoryId
-                }))
-              );
-          }
-        }
       } else {
         // Create new article
         result = await supabase
           .from('articles')
           .insert([articleData])
           .select();
-          
-        if (!result.error && result.data?.[0]?.id && selectedCategories.length > 0) {
-          await supabase
-            .from('article_category_relations')
-            .insert(
-              selectedCategories.map(categoryId => ({
-                article_id: result.data[0].id,
-                category_id: categoryId
-              }))
-            );
-        }
       }
 
       if (result.error) {
@@ -278,10 +275,10 @@ const AdminArticles = () => {
         />
       </CompactCard>
 
-      {/* Enhanced Article Form */}
+      {/* Simple Article Form */}
       <AnimatePresence>
         {showForm && (
-          <EnhancedArticleForm
+          <SimpleArticleForm
             article={editingArticle}
             categories={categories}
             onSave={handleFormSave}

@@ -16,59 +16,97 @@ const ArticleDetail = () => {
   useEffect(() => {
     const fetchArticle = async () => {
       setLoading(true);
+      setError('');
       let data = null;
       let error = null;
 
-      // Try to fetch by slug first
-      if (slug) {
-        const result = await supabase
+      console.log('🔍 Fetching article with slug/id:', slug);
+
+      if (!slug) {
+        setError('No article identifier provided.');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // First try by slug
+        console.log('📝 Trying to fetch by slug:', slug);
+        const slugResult = await supabase
           .from('articles')
-          .select(`
-            *,
-            categories:article_category_relations(
-              category:article_categories(*)
-            )
-          `)
+          .select('*')
           .eq('slug', slug)
           .not('published_at', 'is', null)
           .eq('access', 'public')
-          .single();
+          .maybeSingle();
         
-        data = result.data;
-        error = result.error;
-      }
-
-      // If slug fetch failed, try by ID (fallback for articles without slugs)
-      if (!data && slug) {
-        const result = await supabase
-          .from('articles')
-          .select(`
-            *,
-            categories:article_category_relations(
-              category:article_categories(*)
-            )
-          `)
-          .eq('id', slug)
-          .not('published_at', 'is', null)
-          .eq('access', 'public')
-          .single();
+        console.log('📝 Slug result:', slugResult);
         
-        data = result.data;
-        error = result.error;
-      }
+        if (slugResult.data) {
+          data = slugResult.data;
+          console.log('✅ Found article by slug:', data.title);
+        } else {
+          // If slug fetch failed, try by ID (fallback for old URLs or UUID slugs)
+          console.log('🔄 Slug not found, trying by ID:', slug);
+          const idResult = await supabase
+            .from('articles')
+            .select('*')
+            .eq('id', slug)
+            .not('published_at', 'is', null)
+            .eq('access', 'public')
+            .maybeSingle();
+          
+          console.log('🆔 ID result:', idResult);
+          
+          if (idResult.data) {
+            data = idResult.data;
+            console.log('✅ Found article by ID:', data.title);
+          } else {
+            console.log('❌ Article not found by slug or ID');
+            error = idResult.error || 'Article not found';
+          }
+        }
 
-      if (error || !data) {
-        setError('Article not found.');
-      } else {
-        setArticle(data);
-        // Increment view count
-        await supabase
-          .from('articles')
-          .update({ view_count: (data.view_count || 0) + 1 })
-          .eq('id', data.id);
+        // If we found an article, fetch its category separately
+        if (data && data.category_id) {
+          console.log('🔄 Fetching category for article...');
+          const { data: categoryData, error: categoryError } = await supabase
+            .from('article_categories')
+            .select('*')
+            .eq('id', data.category_id)
+            .maybeSingle();
+          
+          if (categoryData && !categoryError) {
+            data.category = categoryData;
+            console.log('✅ Added category to article:', categoryData.name);
+          } else {
+            console.warn('⚠️ Could not fetch category:', categoryError);
+            data.category = null;
+          }
+        }
+
+        if (data) {
+          setArticle(data);
+          // Increment view count
+          try {
+            await supabase
+              .from('articles')
+              .update({ view_count: (data.view_count || 0) + 1 })
+              .eq('id', data.id);
+            console.log('📈 View count updated for:', data.title);
+          } catch (viewError) {
+            console.warn('⚠️ Failed to update view count:', viewError);
+          }
+        } else {
+          setError('Article not found or not published.');
+        }
+      } catch (fetchError) {
+        console.error('❌ Error fetching article:', fetchError);
+        setError('Error loading article. Please try again.');
       }
+      
       setLoading(false);
     };
+    
     fetchArticle();
   }, [slug]);
 
@@ -96,7 +134,7 @@ const ArticleDetail = () => {
         <meta property="og:description" content={article.seo_description || article.excerpt} />
         <meta property="og:type" content="article" />
         <meta property="og:url" content={window.location.href} />
-        {article.image_url && <meta property="og:image" content={article.image_url} />}
+        {article.featured_image && <meta property="og:image" content={article.featured_image} />}
       </Helmet>
 
       <motion.div
@@ -119,10 +157,10 @@ const ArticleDetail = () => {
 
           {/* Article Header */}
           <header className="mb-12">
-            {article.image_url && (
+            {article.featured_image && (
               <div className="relative h-[400px] mb-8 rounded-2xl overflow-hidden">
                 <img 
-                  src={article.image_url} 
+                  src={article.featured_image} 
                   alt={article.title} 
                   className="w-full h-full object-cover"
                 />
@@ -159,22 +197,18 @@ const ArticleDetail = () => {
               )}
             </div>
 
-            {/* Categories */}
-            {article.categories?.length > 0 && (
+            {/* Category */}
+            {article.category && (
               <div className="flex flex-wrap gap-2">
-                {article.categories.map(({ category }) => (
-                  <Link
-                    key={category.id}
-                    to={`/articles?category=${category.id}`}
-                    className={`px-3 py-1 rounded-full text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-meta-blue focus-visible:ring-offset-2
-                      ${theme === 'dark' 
-                        ? 'bg-meta-blue/20 text-meta-blue hover:bg-meta-blue/30' 
-                        : 'bg-meta-blue/10 text-meta-blue hover:bg-meta-blue/20'
-                      }`}
-                  >
-                    {category.name}
-                  </Link>
-                ))}
+                <span
+                  className={`px-3 py-1 rounded-full text-sm font-medium
+                    ${theme === 'dark' 
+                      ? 'bg-meta-blue/20 text-meta-blue' 
+                      : 'bg-meta-blue/10 text-meta-blue'
+                    }`}
+                >
+                  {article.category.name}
+                </span>
               </div>
             )}
           </header>

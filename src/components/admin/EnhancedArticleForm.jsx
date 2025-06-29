@@ -7,7 +7,7 @@ import Link from '@tiptap/extension-link';
 import { 
   X, Save, Eye, Upload, Link as LinkIcon, Bold, Italic, 
   List, ListOrdered, Heading2, Image as ImageIcon, ExternalLink,
-  Tag, Globe, Search, Calendar, FileText, Settings, Check, AlertCircle, Copy
+  Search, FileText, Settings, Check, AlertCircle, Copy
 } from 'lucide-react';
 import Button from '../common/Button';
 import Input from '../common/Input';
@@ -34,11 +34,11 @@ const EnhancedArticleForm = ({
     seo_description: '',
     seo_keywords: [],
     published_at: null,
+    category_id: null,
     featured_image: '',
     ...article
   });
-  const [selectedCategories, setSelectedCategories] = useState([]);
-  const [slugStatus, setSlugStatus] = useState({ valid: true, unique: true, checking: false });
+  const [slugStatus, setSlugStatus] = useState({ valid: true, unique: true, checking: false, message: '' });
   const [imageUploadMode, setImageUploadMode] = useState('url'); // 'url' or 'upload'
   const [previewMode, setPreviewMode] = useState(false);
   const fileInputRef = useRef(null);
@@ -66,8 +66,9 @@ const EnhancedArticleForm = ({
   useEffect(() => {
     if (article) {
       setForm({ ...form, ...article });
-      if (article.categories) {
-        setSelectedCategories(article.categories.map(cat => cat.category_id || cat.category?.id));
+      // Handle category relationship
+      if (article.category_id) {
+        setForm(prev => ({ ...prev, category_id: article.category_id }));
       }
     }
     // eslint-disable-next-line
@@ -105,30 +106,65 @@ const EnhancedArticleForm = ({
 
   // Handle slug validation
   const handleSlugChange = async (e) => {
-    const slug = e.target.value;
+    const slug = e.target.value.toLowerCase().trim();
     setForm(prev => ({ ...prev, slug }));
     
+    console.log('🏷️ Validating slug:', slug);
+    
+    if (slug.length === 0) {
+      setSlugStatus({ valid: true, unique: true, checking: false, message: '' });
+      return;
+    }
+    
     if (slug.length >= 3) {
-      setSlugStatus({ valid: true, unique: true, checking: true });
+      setSlugStatus({ valid: true, unique: true, checking: true, message: 'Checking...' });
       
       const isValid = validateSlug(slug);
+      console.log('✓ Slug validation result:', isValid);
+      
       if (!isValid) {
-        setSlugStatus({ valid: false, unique: true, checking: false });
+        setSlugStatus({ 
+          valid: false, 
+          unique: true, 
+          checking: false, 
+          message: 'Slug must be 3+ chars, only letters, numbers, and hyphens' 
+        });
         return;
       }
 
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('articles')
-          .select('id')
+          .select('id, title')
           .eq('slug', slug)
           .neq('id', article?.id || '');
         
+        if (error) {
+          console.error('❌ Error checking slug uniqueness:', error);
+          setSlugStatus({ valid: true, unique: false, checking: false, message: 'Error checking uniqueness' });
+          return;
+        }
+        
         const isUnique = data.length === 0;
-        setSlugStatus({ valid: true, unique: isUnique, checking: false });
+        console.log('🔍 Slug uniqueness check:', { slug, isUnique, conflicts: data });
+        
+        setSlugStatus({ 
+          valid: true, 
+          unique: isUnique, 
+          checking: false, 
+          message: isUnique ? 'Available' : `Already used by: ${data[0]?.title}` 
+        });
       } catch (error) {
-        setSlugStatus({ valid: true, unique: false, checking: false });
+        console.error('❌ Error in slug validation:', error);
+        setSlugStatus({ valid: true, unique: false, checking: false, message: 'Error checking slug' });
       }
+    } else {
+      setSlugStatus({ 
+        valid: false, 
+        unique: true, 
+        checking: false, 
+        message: 'Slug must be at least 3 characters' 
+      });
     }
   };
 
@@ -145,13 +181,10 @@ const EnhancedArticleForm = ({
     }
   };
 
-  // Handle category selection
-  const toggleCategory = (categoryId) => {
-    setSelectedCategories(prev => 
-      prev.includes(categoryId) 
-        ? prev.filter(id => id !== categoryId)
-        : [...prev, categoryId]
-    );
+  // Handle category selection (single category as per current schema)
+  const handleCategoryChange = (e) => {
+    const categoryId = e.target.value || null;
+    setForm(prev => ({ ...prev, category_id: categoryId }));
   };
 
   // Handle image upload
@@ -172,6 +205,7 @@ const EnhancedArticleForm = ({
       const { data } = supabase.storage.from('images').getPublicUrl(filePath);
       
       setForm(prev => ({ ...prev, featured_image: data.publicUrl }));
+      alert('✅ Image uploaded successfully!');
     } catch (error) {
       console.error('Error uploading image:', error);
       alert('Failed to upload image. Please try again.');
@@ -257,7 +291,7 @@ const EnhancedArticleForm = ({
       return;
     }
 
-    onSave && onSave({ ...form, selectedCategories });
+    onSave && onSave(form);
   };
 
   return (
@@ -398,16 +432,27 @@ const EnhancedArticleForm = ({
                           </div>
                         </div>
                         {form.slug && (
-                          <div className="mt-1 flex items-center gap-2">
-                            <span className="text-xs text-gray-500">
-                              URL: /articles/{form.slug}
-                            </span>
-                            <button
-                              onClick={() => navigator.clipboard.writeText(previewSlugUrl(form.slug))}
-                              className="text-blue-500 hover:text-blue-700"
-                            >
-                              <Copy className="w-3 h-3" />
-                            </button>
+                          <div className="mt-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-500">
+                                URL: /articles/{form.slug}
+                              </span>
+                              <button
+                                onClick={() => navigator.clipboard.writeText(previewSlugUrl(form.slug))}
+                                className="text-blue-500 hover:text-blue-700"
+                              >
+                                <Copy className="w-3 h-3" />
+                              </button>
+                            </div>
+                            {slugStatus.message && (
+                              <p className={`text-xs mt-1 ${
+                                !slugStatus.valid ? 'text-red-600' : 
+                                !slugStatus.unique ? 'text-yellow-600' : 
+                                'text-green-600'
+                              }`}>
+                                {slugStatus.message}
+                              </p>
+                            )}
                           </div>
                         )}
                       </div>
@@ -431,27 +476,23 @@ const EnhancedArticleForm = ({
                       </p>
                     </div>
 
-                    {/* Categories */}
+                    {/* Category Selection */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-3">
-                        Categories
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Category
                       </label>
-                      <div className="flex flex-wrap gap-2">
+                      <select
+                        value={form.category_id || ''}
+                        onChange={handleCategoryChange}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">Select a category</option>
                         {categories.map((category) => (
-                          <button
-                            key={category.id}
-                            onClick={() => toggleCategory(category.id)}
-                            className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
-                              selectedCategories.includes(category.id)
-                                ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                                : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
-                            }`}
-                          >
-                            <Tag className="w-3 h-3 mr-1 inline" />
+                          <option key={category.id} value={category.id}>
                             {category.name}
-                          </button>
+                          </option>
                         ))}
-                      </div>
+                      </select>
                     </div>
 
                     {/* Content Editor */}

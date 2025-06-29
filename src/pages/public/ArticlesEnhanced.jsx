@@ -45,10 +45,8 @@ const ArticlesEnhanced = () => {
 
   // Get unique categories from articles
   const categories = useMemo(() => {
-    const allCategories = articles.flatMap(article => 
-      article.categories?.map(cat => cat.category) || []
-    );
-    const uniqueCategories = [...new Set(allCategories.map(cat => cat?.name).filter(Boolean))];
+    const allCategories = articles.map(article => article.category?.name).filter(Boolean);
+    const uniqueCategories = [...new Set(allCategories)];
     return uniqueCategories;
   }, [articles]);
 
@@ -60,7 +58,7 @@ const ArticlesEnhanced = () => {
         article.excerpt?.toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesCategory = selectedCategory === 'all' || 
-        article.categories?.some(cat => cat.category?.name === selectedCategory);
+        article.category?.name === selectedCategory;
       
       return matchesSearch && matchesCategory;
     });
@@ -331,10 +329,10 @@ const ArticlesEnhanced = () => {
                       )}
                       
                       {/* Category Badge */}
-                      {article.categories && article.categories.length > 0 && (
+                      {article.category && (
                         <div className="absolute top-4 left-4">
                           <span className="px-3 py-1 bg-white/90 text-meta-blue rounded-full text-xs font-medium">
-                            {article.categories[0].category?.name}
+                            {article.category.name}
                           </span>
                         </div>
                       )}
@@ -399,26 +397,23 @@ const ArticlesEnhanced = () => {
                         </div>
                       </div>
                       
-                      {/* Tags */}
-                      {article.categories && article.categories.length > 1 && (
+                      {/* Tags - Simplified since we only have one category per article */}
+                      {article.category && (
                         <div className="flex flex-wrap gap-2 mb-4">
-                          {article.categories.slice(1, 4).map(({ category }) => (
-                            <span 
-                              key={category?.id} 
-                              className={`px-2 py-1 text-xs rounded ${
-                                theme === 'dark' ? 'bg-meta-gray-800 text-meta-gray-300' : 'bg-gray-100 text-meta-gray-600'
-                              }`}
-                            >
-                              {category?.name}
-                            </span>
-                          ))}
+                          <span 
+                            className={`px-2 py-1 text-xs rounded ${
+                              theme === 'dark' ? 'bg-meta-gray-800 text-meta-gray-300' : 'bg-gray-100 text-meta-gray-600'
+                            }`}
+                          >
+                            {article.category.name}
+                          </span>
                         </div>
                       )}
                       
                       {/* CTA Button */}
                       <Button
                         as={Link}
-                        to={`/articles/${article.slug || article.id}`}
+                        to={`/articles/${(article.slug && article.slug.trim()) ? article.slug : article.id}`}
                         variant="primary"
                         className="w-full group-hover:bg-meta-blue group-hover:shadow-lg transition-all duration-300"
                       >

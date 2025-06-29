@@ -71,15 +71,14 @@ const Articles = () => {
               >
                 <div className="p-6 flex flex-col h-full">
                   <div className="flex items-center gap-2 mb-4 flex-wrap">
-                    {/* Category tags */}
-                    {article.categories && article.categories.length > 0 && article.categories.map(({ category }) => (
+                    {/* Category tag */}
+                    {article.category && (
                       <span
-                        key={category.id}
                         className={`px-3 py-1 rounded-full text-xs font-semibold mr-2 mb-1 ${theme === 'dark' ? 'bg-meta-blue/20 text-meta-blue' : 'bg-meta-blue/10 text-meta-blue'}`}
                       >
-                        {category.name}
+                        {article.category.name}
                       </span>
-                    ))}
+                    )}
                     {/* Content type */}
                     {article.type && (
                       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
@@ -111,7 +110,7 @@ const Articles = () => {
                     </div>
                     <Button
                       as={Link}
-                      to={`/articles/${article.slug || article.id}`}
+                      to={`/articles/${(article.slug && article.slug.trim()) ? article.slug : article.id}`}
                       size="sm"
                       variant="primary"
                       className="rounded-full px-4 py-2 text-sm"

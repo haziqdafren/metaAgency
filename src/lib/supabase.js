@@ -333,27 +333,55 @@ export const getPublicTalents = async (filters = {}) => {
 };
 
 export const getArticles = async (filters = {}) => {
-  let query = supabase
-    .from('articles')
-    .select(`
-      *,
-      categories:article_category_relations(
-        category:article_categories(*)
-      )
-    `)
-    .not('published_at', 'is', null)
-    .eq('access', 'public');
+  console.log('🔄 Fetching public articles...');
+  
+  try {
+    // Fetch articles and categories separately to avoid relationship conflicts
+    let articlesQuery = supabase
+      .from('articles')
+      .select('*')
+      .not('published_at', 'is', null)
+      .eq('access', 'public');
 
-  if (filters.category) {
-    query = query.contains('categories', [{ category: { slug: filters.category } }]);
+    if (filters.category) {
+      articlesQuery = articlesQuery.eq('category_id', filters.category);
+    }
+
+    if (filters.searchTerm) {
+      articlesQuery = articlesQuery.or(`title.ilike.%${filters.searchTerm}%,excerpt.ilike.%${filters.searchTerm}%`);
+    }
+
+    const { data: articlesData, error: articlesError } = await articlesQuery
+      .order('published_at', { ascending: false });
+
+    if (articlesError) {
+      throw articlesError;
+    }
+
+    const { data: categoriesData, error: categoriesError } = await supabase
+      .from('article_categories')
+      .select('*');
+
+    if (categoriesError) {
+      throw categoriesError;
+    }
+
+    // Manually join the data
+    const processedData = articlesData?.map(article => {
+      const category = categoriesData?.find(cat => cat.id === article.category_id);
+      return {
+        ...article,
+        category: category || null
+      };
+    }) || [];
+
+    console.log(`✅ Successfully fetched ${processedData.length} public articles`);
+    return { data: processedData, error: null };
+
+  } catch (error) {
+    console.error('❌ Error fetching public articles:', error);
+    return { data: null, error };
   }
-
-  if (filters.searchTerm) {
-    query = query.or(`title.ilike.%${filters.searchTerm}%,excerpt.ilike.%${filters.searchTerm}%`);
-  }
-
-  const { data, error } = await query.order('published_at', { ascending: false });
-  return { data, error };
 };
 
 export const getTalentPerformance = async (talentId, limit = 12) => {

@@ -49,16 +49,15 @@ const EnhancedArticlesTable = ({
       })),
       render: (value, row) => (
         <div className="flex flex-wrap gap-1">
-          {row.categories?.map((categoryRel, idx) => (
+          {row.category ? (
             <span
-              key={idx}
               className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
             >
               <Tag className="w-3 h-3 mr-1" />
-              {categoryRel.category?.name || 'Unknown'}
+              {row.category.name}
             </span>
-          )) || (
-            <span className="text-gray-400 text-sm">No categories</span>
+          ) : (
+            <span className="text-gray-400 text-sm">No category</span>
           )}
         </div>
       )
@@ -270,7 +269,7 @@ const EnhancedArticlesTable = ({
         article.seo_keywords?.length > 0,
         article.excerpt
       ].filter(Boolean).length * 25,
-      category_names: article.categories?.map(cat => cat.category?.name).join(', ') || '',
+      category_names: article.category?.name || '',
       word_count: article.content ? article.content.replace(/<[^>]*>/g, '').split(/\s+/).length : 0,
       has_featured_image: !!article.featured_image,
       days_since_published: article.published_at 
@@ -297,9 +296,17 @@ const EnhancedArticlesTable = ({
           title: 'Preview Article',
           variant: 'ghost',
           onClick: (article) => {
+            console.log('👁️ Eye button clicked for article:', article);
+            
             if (article.published_at) {
-              // Use slug if available, otherwise use ID as fallback
-              const articleUrl = `/articles/${article.slug || article.id}`;
+              // Always use slug if it exists and is not empty, otherwise use ID
+              const hasValidSlug = article.slug && article.slug.trim() && article.slug.length > 2;
+              const articlePath = hasValidSlug ? article.slug : article.id;
+              const articleUrl = `/articles/${articlePath}`;
+              
+              console.log(`🔗 Opening article URL: ${articleUrl}`);
+              console.log(`🏷️ Using ${hasValidSlug ? 'slug' : 'ID'}: ${articlePath}`);
+              
               window.open(articleUrl, '_blank');
             } else {
               // For draft articles, show preview modal or notification
@@ -329,14 +336,15 @@ const EnhancedArticlesTable = ({
           variant: 'ghost',
           onClick: async (article) => {
             if (article.published_at) {
-              // Use slug if available, otherwise use ID as fallback
-              const articlePath = article.slug || article.id;
+              // Always use slug if it exists and is not empty, otherwise use ID
+              const articlePath = (article.slug && article.slug.trim()) ? article.slug : article.id;
               const url = `${window.location.origin}/articles/${articlePath}`;
               
               try {
                 await navigator.clipboard.writeText(url);
-                // Show success notification
-                alert(`✅ Article URL copied to clipboard!\n\n"${article.title}"\n\n${url}`);
+                // Show success notification with URL type
+                const urlType = (article.slug && article.slug.trim()) ? 'SEO URL' : 'ID URL';
+                alert(`✅ Article ${urlType} copied to clipboard!\n\n"${article.title}"\n\n${url}`);
               } catch (error) {
                 // Fallback for browsers that don't support clipboard API
                 const textArea = document.createElement('textarea');
@@ -345,7 +353,8 @@ const EnhancedArticlesTable = ({
                 textArea.select();
                 document.execCommand('copy');
                 document.body.removeChild(textArea);
-                alert(`✅ Article URL copied to clipboard!\n\n"${article.title}"\n\n${url}`);
+                const urlType = (article.slug && article.slug.trim()) ? 'SEO URL' : 'ID URL';
+                alert(`✅ Article ${urlType} copied to clipboard!\n\n"${article.title}"\n\n${url}`);
               }
             } else {
               alert(`⚠️ Cannot share unpublished article\n\n"${article.title}" is still a draft. Please publish it first to share.`);
