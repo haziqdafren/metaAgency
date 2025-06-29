@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Check } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
 import useThemeStore from '../../store/themeStore';
 
 const JoinPage = () => {
@@ -13,42 +12,52 @@ const JoinPage = () => {
     followers_count: '',
     konten_kategori: '',
     experience: '',
-    goals: '',
   });
-  const [isLoading, setIsLoading] = useState(false);
+
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
   const { theme } = useThemeStore();
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setIsLoading(true);
-    setError('');
-    setSuccess(false);
 
-    try {
-      const { error } = await supabase
-        .from('registrations')
-        .insert([formData]);
+    const {
+      name,
+      email,
+      phone,
+      username_tiktok,
+      followers_count,
+      konten_kategori,
+      experience,
+    } = formData;
 
-      if (error) throw error;
-
-      setSuccess(true);
-      setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        username_tiktok: '',
-        followers_count: '',
-        konten_kategori: '',
-        experience: '',
-        goals: '',
-      });
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
+    if (
+      !name ||
+      !email ||
+      !phone ||
+      !username_tiktok ||
+      !followers_count ||
+      !konten_kategori ||
+      !experience
+    ) {
+      alert('Mohon lengkapi semua isian');
+      return;
     }
+
+    const message = `Halo Admin Meta Agency! Saya ingin mendaftar sebagai talent:\n\n` +
+      `Nama: ${name}\n` +
+      `Email: ${email}\n` +
+      `No. HP: ${phone}\n` +
+      `Username TikTok: ${username_tiktok}\n` +
+      `Jumlah Followers: ${followers_count}\n` +
+      `Kategori Konten: ${konten_kategori}\n` +
+      `Pengalaman: ${experience}`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappNumber = '62895360039764';
+    const whatsappURL = `https://wa.me/${whatsappNumber}?text=${encodedMessage}`;
+
+    alert('Terima kasih! Anda akan diarahkan ke WhatsApp untuk mengirim data ke admin.');
+    window.open(whatsappURL, '_blank');
   };
 
   const handleChange = (e) => {
@@ -124,11 +133,6 @@ const JoinPage = () => {
                 {error}
               </div>
             )}
-            {success && (
-              <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 text-sm text-green-500 mb-6">
-                Pendaftaran Anda telah berhasil. Tim kami akan menghubungi Anda segera.
-              </div>
-            )}
             <form onSubmit={handleSubmit} className="space-y-6">
               {[
                 { id: 'name', label: 'Nama Lengkap', type: 'text', placeholder: 'Masukkan nama lengkap' },
@@ -184,10 +188,9 @@ const JoinPage = () => {
               </div>
               <button
                 type="submit"
-                disabled={isLoading}
                 className="w-full btn btn-primary py-3 px-4 text-base font-medium"
               >
-                {isLoading ? 'Memproses...' : 'Daftar'}
+                Daftar
               </button>
             </form>
           </div>
@@ -197,4 +200,4 @@ const JoinPage = () => {
   );
 };
 
-export default JoinPage; 
+export default JoinPage;
