@@ -21,7 +21,8 @@ const UploadHistoryTab = () => {
 
   // Search/filter state
   const [search, setSearch] = useState('');
-  const [filterMonth, setFilterMonth] = useState('');
+  const [filterPeriodType, setFilterPeriodType] = useState('');
+  const [filterDuration, setFilterDuration] = useState('');
   const [filterYear, setFilterYear] = useState('');
 
   const PAGE_SIZE = 10;
@@ -37,31 +38,35 @@ const UploadHistoryTab = () => {
     try {
       const { data, error } = await supabase
         .from('creator_performance')
-        .select('*')
+        .select('period_identifier, period_type, period_duration_days, period_start_date, period_end_date, period_year, period_month, created_at, diamonds, valid_days, live_hours, new_followers, raw_data')
+        .not('period_identifier', 'is', null)
         .order('created_at', { ascending: false });
         
       if (error) throw error;
 
-      // Group by period
+      // Group by period_identifier (NEW SYSTEM)
       const grouped = {};
       data.forEach(row => {
-        const period = row.raw_data?.period || '-';
-        const key = `${row.period_year}-${row.period_month}-${period}`;
+        const periodId = row.period_identifier;
         
-        if (!grouped[key]) {
-          grouped[key] = {
-            period,
-            period_month: row.period_month,
+        if (!grouped[periodId]) {
+          grouped[periodId] = {
+            period_identifier: row.period_identifier,
+            period_type: row.period_type,
+            period_duration_days: row.period_duration_days,
+            period_start_date: row.period_start_date,
+            period_end_date: row.period_end_date,
             period_year: row.period_year,
+            period_month: row.period_month,
             created_at: row.created_at,
             count: 1,
             rows: [row],
           };
         } else {
-          grouped[key].count += 1;
-          grouped[key].rows.push(row);
-          if (row.created_at > grouped[key].created_at) {
-            grouped[key].created_at = row.created_at;
+          grouped[periodId].count += 1;
+          grouped[periodId].rows.push(row);
+          if (row.created_at > grouped[periodId].created_at) {
+            grouped[periodId].created_at = row.created_at;
           }
         }
       });
@@ -96,25 +101,31 @@ const UploadHistoryTab = () => {
     });
   };
 
-  // Get unique months/years for filter dropdowns
-  const uniqueMonths = Array.from(new Set(periodUploads.map(u => u.period_month)))
+  // Get unique values for filter dropdowns
+  const uniquePeriodTypes = Array.from(new Set(periodUploads.map(u => u.period_type)))
+    .filter(Boolean)
+    .sort();
+  const uniqueDurations = Array.from(new Set(periodUploads.map(u => u.period_duration_days)))
     .filter(Boolean)
     .sort((a, b) => a - b);
   const uniqueYears = Array.from(new Set(periodUploads.map(u => u.period_year)))
     .filter(Boolean)
     .sort((a, b) => a - b);
 
-  // Search and filter logic
+  // Search and filter logic - UPDATED FOR NEW SYSTEM
   const filteredUploads = periodUploads.filter(upload => {
-    if (filterMonth && String(upload.period_month) !== String(filterMonth)) return false;
+    if (filterPeriodType && upload.period_type !== filterPeriodType) return false;
+    if (filterDuration && String(upload.period_duration_days) !== String(filterDuration)) return false;
     if (filterYear && String(upload.period_year) !== String(filterYear)) return false;
     
     if (search) {
       const s = search.toLowerCase();
       return (
-        (upload.period && upload.period.toLowerCase().includes(s)) ||
-        formatMonthYear(upload.period_month, upload.period_year).toLowerCase().includes(s) ||
-        String(upload.period_month).includes(s) ||
+        (upload.period_identifier && upload.period_identifier.toLowerCase().includes(s)) ||
+        (upload.period_start_date && upload.period_start_date.toLowerCase().includes(s)) ||
+        (upload.period_end_date && upload.period_end_date.toLowerCase().includes(s)) ||
+        (upload.period_type && upload.period_type.toLowerCase().includes(s)) ||
+        String(upload.period_duration_days).includes(s) ||
         String(upload.period_year).includes(s) ||
         upload.rows.some(row => (row.raw_data?.username_tiktok || '').toLowerCase().includes(s))
       );
@@ -130,7 +141,7 @@ const UploadHistoryTab = () => {
   // Reset page on filter change
   useEffect(() => {
     setPage(1);
-  }, [search, filterMonth, filterYear]);
+  }, [search, filterPeriodType, filterDuration, filterYear]);
 
   const openModal = (upload) => {
     // Sort by diamonds descending
@@ -154,13 +165,12 @@ const UploadHistoryTab = () => {
     setDeleteLoading(true);
     
     try {
-      const { period, period_month, period_year } = deleteTarget;
+      const { period_identifier } = deleteTarget;
       
       const { error } = await supabase
         .from('creator_performance')
         .delete()
-        .match({ period_month, period_year })
-        .filter('raw_data->>period', 'eq', period);
+        .eq('period_identifier', period_identifier);
         
       if (error) throw error;
       
@@ -182,7 +192,11 @@ const UploadHistoryTab = () => {
   const stats = {
     totalUploads: periodUploads.length,
     totalCreators: periodUploads.reduce((sum, upload) => sum + upload.count, 0),
-    latestPeriod: periodUploads.length > 0 ? periodUploads[0].period : 'None',
+    latestPeriod: periodUploads.length > 0 
+      ? (periodUploads[0].period_start_date && periodUploads[0].period_end_date 
+          ? `${periodUploads[0].period_start_date} ~ ${periodUploads[0].period_end_date}`
+          : periodUploads[0].period_identifier)
+      : 'None',
     avgCreatorsPerUpload: periodUploads.length > 0 
       ? Math.round(periodUploads.reduce((sum, upload) => sum + upload.count, 0) / periodUploads.length)
       : 0
@@ -226,12 +240,18 @@ const UploadHistoryTab = () => {
               </div>
             </div>
             <div className="flex gap-2">
-              <Select value={filterMonth} onChange={e => setFilterMonth(e.target.value)}>
-                <option value="">All Months</option>
-                {uniqueMonths.map(m => (
-                  <option key={m} value={m}>
-                    {formatMonthYear(m, 2000).split(' ')[0]}
+              <Select value={filterPeriodType} onChange={e => setFilterPeriodType(e.target.value)}>
+                <option value="">All Types</option>
+                {uniquePeriodTypes.map(type => (
+                  <option key={type} value={type}>
+                    {type.charAt(0).toUpperCase() + type.slice(1)}
                   </option>
+                ))}
+              </Select>
+              <Select value={filterDuration} onChange={e => setFilterDuration(e.target.value)}>
+                <option value="">All Durations</option>
+                {uniqueDurations.map(days => (
+                  <option key={days} value={days}>{days} days</option>
                 ))}
               </Select>
               <Select value={filterYear} onChange={e => setFilterYear(e.target.value)}>
@@ -254,8 +274,8 @@ const UploadHistoryTab = () => {
               <CompactTable compact>
                 <CompactTable.Head>
                   <CompactTable.Row>
-                    <CompactTable.Header>Period</CompactTable.Header>
-                    <CompactTable.Header>Month/Year</CompactTable.Header>
+                    <CompactTable.Header>Period Range</CompactTable.Header>
+                    <CompactTable.Header>Type & Duration</CompactTable.Header>
                     <CompactTable.Header>Creators</CompactTable.Header>
                     <CompactTable.Header>Upload Date</CompactTable.Header>
                     <CompactTable.Header>Actions</CompactTable.Header>
@@ -270,12 +290,34 @@ const UploadHistoryTab = () => {
                     </CompactTable.Row>
                   ) : (
                     paginatedUploads.map((upload, idx) => (
-                      <CompactTable.Row key={upload.period + upload.period_month + upload.period_year}>
+                      <CompactTable.Row key={upload.period_identifier}>
                         <CompactTable.Cell className="font-medium">
-                          {upload.period}
+                          <div>
+                            <div className="font-semibold">
+                              {upload.period_start_date && upload.period_end_date 
+                                ? `${upload.period_start_date} ~ ${upload.period_end_date}`
+                                : upload.period_identifier
+                              }
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {upload.period_identifier}
+                            </div>
+                          </div>
                         </CompactTable.Cell>
                         <CompactTable.Cell>
-                          {formatMonthYear(upload.period_month, upload.period_year)}
+                          <div>
+                            <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                              upload.period_type === 'weekly' ? 'bg-green-100 text-green-800' :
+                              upload.period_type === 'bi-weekly' ? 'bg-blue-100 text-blue-800' :
+                              upload.period_type === 'monthly' ? 'bg-purple-100 text-purple-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {upload.period_type || 'Unknown'}
+                            </span>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {upload.period_duration_days} days
+                            </div>
+                          </div>
                         </CompactTable.Cell>
                         <CompactTable.Cell>
                           <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
@@ -358,9 +400,27 @@ const UploadHistoryTab = () => {
               onClick={e => e.stopPropagation()}
             >
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold">
-                  Period: <span className="text-blue-600">{modalData.period}</span>
-                </h3>
+                <div>
+                  <h3 className="text-xl font-bold">
+                    Period: <span className="text-blue-600">
+                      {modalData.period_start_date && modalData.period_end_date 
+                        ? `${modalData.period_start_date} ~ ${modalData.period_end_date}`
+                        : modalData.period_identifier
+                      }
+                    </span>
+                  </h3>
+                  <div className="text-sm text-gray-600 mt-1">
+                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mr-2 ${
+                      modalData.period_type === 'weekly' ? 'bg-green-100 text-green-800' :
+                      modalData.period_type === 'bi-weekly' ? 'bg-blue-100 text-blue-800' :
+                      modalData.period_type === 'monthly' ? 'bg-purple-100 text-purple-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {modalData.period_type || 'Unknown'}
+                    </span>
+                    {modalData.period_duration_days} days • {modalData.count} creators
+                  </div>
+                </div>
                 <button 
                   onClick={closeModal}
                   className="text-gray-400 hover:text-gray-600 text-2xl font-bold"
@@ -433,7 +493,12 @@ const UploadHistoryTab = () => {
               <h3 className="text-lg font-bold mb-4 text-red-600">Delete Confirmation</h3>
               <p className="mb-6 text-gray-700">
                 Are you sure you want to delete all records for{' '}
-                <span className="font-semibold text-blue-600">{deleteTarget.period}</span>?{' '}
+                <span className="font-semibold text-blue-600">
+                  {deleteTarget.period_start_date && deleteTarget.period_end_date 
+                    ? `${deleteTarget.period_start_date} ~ ${deleteTarget.period_end_date}`
+                    : deleteTarget.period_identifier
+                  }
+                </span>?{' '}
                 This action cannot be undone.
               </p>
               <div className="flex gap-4 justify-end">

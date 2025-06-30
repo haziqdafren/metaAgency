@@ -65,11 +65,27 @@ const NewUploadTab = ({ onUploadComplete }) => {
     }
   };
 
+  // Helper to get a value from row by possible column names (case-insensitive, trimmed)
+  const getColumnValue = (row, possibleNames) => {
+    for (const key of Object.keys(row)) {
+      for (const name of possibleNames) {
+        if (key.trim().toLowerCase() === name.trim().toLowerCase()) {
+          return row[key];
+        }
+      }
+    }
+    return undefined;
+  };
+
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) {
       return;
     }
+    
+    // Set upload active state to extend session timeout
+    localStorage.setItem('adminUploadActive', 'true');
+    localStorage.setItem('adminLastActivity', Date.now().toString());
     
     setLoading(true);
     setUploadError('');
@@ -166,6 +182,28 @@ const NewUploadTab = ({ onUploadComplete }) => {
             }
           }
           
+          // Robust mapping for valid_days and live_duration
+          const validDays = parseInt(
+            getColumnValue(row, [
+              'Valid go LIVE days',
+              'Valid days',
+              'Valid days(d)',
+              'Valid go LIVE days ',
+              'Valid go LIVE days'.trim(),
+              'Valid go LIVE days last month',
+              'Valid go LIVE days - Percentage achieved',
+            ]) || 0
+          );
+          const liveDuration =
+            getColumnValue(row, [
+              'LIVE duration',
+              'Live duration',
+              'LIVE duration(h)',
+              'LIVE duration (hours)',
+              'LIVE duration (hours) last month',
+              'LIVE duration - Percentage achieved',
+            ]) || '0h 0m';
+
           // Process the data
           const processed = {
             creator_id: creatorId,
@@ -180,8 +218,8 @@ const NewUploadTab = ({ onUploadComplete }) => {
             link_tiktok: row["TikTok link"] || row["Link"] || '',
             nomor_wa: row["WhatsApp number"] || row["Phone"] || '',
             diamonds: parseInt(row["Diamonds"] || 0),
-            valid_days: parseInt(row["Valid days"] || row["Valid days(d)"] || 0),
-            live_duration: row["Live duration"] || row["LIVE duration(h)"] || '0h 0m',
+            valid_days: validDays,
+            live_duration: liveDuration,
             new_followers: parseInt(row["New followers"] || 0),
             diamonds_vs_last_month: row["Diamonds vs last month"] || '0%',
             live_streams: parseInt(row["Live streams"] || 0),
@@ -222,6 +260,8 @@ const NewUploadTab = ({ onUploadComplete }) => {
     } catch (error) {
       setUploadError(error.message);
     } finally {
+      // Clear upload active state when done (but keep it if user goes to save)
+      // Don't remove here - let the save operation handle it
       setLoading(false);
     }
   };
@@ -263,15 +303,24 @@ const NewUploadTab = ({ onUploadComplete }) => {
     <div className="space-y-6">
       {/* Upload Success Message */}
       {creatorData.length > 0 && (
-        <div className="bg-green-100 border-2 border-green-500 p-4 rounded-lg">
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-green-100 border-2 border-green-500 p-4 rounded-lg"
+        >
           <div className="flex items-center space-x-3">
             <CheckCircle className="w-6 h-6 text-green-600" />
             <div>
               <h3 className="font-bold text-green-800">✅ Upload Complete!</h3>
-              <p className="text-green-700 text-sm">Found {creatorData.length} creators. Go to Messages & Export tab to save to database.</p>
+              <p className="text-green-700 text-sm">
+                Found {creatorData.length} creators from period: <strong>{creatorData[0]?.period || 'Unknown'}</strong>
+              </p>
+              <p className="text-green-600 text-xs mt-1">
+                🔒 Session timeout extended for upload operations. Go to Messages & Export tab to save to database.
+              </p>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* Upload Section */}
@@ -416,10 +465,21 @@ const NewUploadTab = ({ onUploadComplete }) => {
             {/* Next Steps Info */}
             <div className="flex flex-col sm:flex-row gap-4 p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-blue-200">
               <div className="flex-1">
-                <h4 className="font-semibold text-gray-900 mb-1">Next Steps</h4>
-                <p className="text-sm text-gray-600">
-                  Data uploaded successfully! Go to the Messages & Export tab to save to database and generate messages.
-                </p>
+                <h4 className="font-semibold text-gray-900 mb-2">Next Steps</h4>
+                <div className="space-y-2">
+                  <div className="flex items-center text-sm text-gray-700">
+                    <span className="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs mr-2">1</span>
+                    Go to <strong>Messages & Export</strong> tab
+                  </div>
+                  <div className="flex items-center text-sm text-gray-700">
+                    <span className="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs mr-2">2</span>
+                    Click <strong>Save to Database</strong> to store performance data
+                  </div>
+                  <div className="flex items-center text-sm text-gray-700">
+                    <span className="bg-blue-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs mr-2">3</span>
+                    Generate and copy WhatsApp messages
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -470,7 +530,6 @@ const NewUploadTab = ({ onUploadComplete }) => {
                 ))}
               </CompactTable.Body>
             </CompactTable>
-            
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex justify-center items-center gap-2">
@@ -495,7 +554,6 @@ const NewUploadTab = ({ onUploadComplete }) => {
                 </Button>
               </div>
             )}
-            
           </div>
         </CompactCard>
       )}
