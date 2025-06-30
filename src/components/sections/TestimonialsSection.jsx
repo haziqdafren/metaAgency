@@ -9,7 +9,7 @@ const TestimonialsSection = () => {
       name: 'Dwi Sari',
       role: 'Lifestyle Creator',
       followers: '2.5M',
-      image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
+      image: '👩',
       quote: 'Bergabung dengan Meta Agency adalah keputusan terbaik yang pernah saya buat. Tim mereka membantu saya mengembangkan strategi konten yang tepat dan menghubungkan saya dengan brand-brand ternama.',
       rating: 5,
     },
@@ -17,7 +17,7 @@ const TestimonialsSection = () => {
       name: 'Budi Sutiono',
       role: 'Tech Reviewer',
       followers: '1.8M',
-      image: 'https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
+      image: '👨‍💻',
       quote: 'Meta Agency memberikan dukungan yang luar biasa dalam mengembangkan channel saya. Analisis data mereka sangat membantu dalam memahami audiens dan mengoptimalkan konten.',
       rating: 5,
     },
@@ -25,7 +25,7 @@ const TestimonialsSection = () => {
       name: 'Eka Pramudi',
       role: 'Fashion Influencer',
       followers: '3.2M',
-      image: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80',
+      image: '👩‍🎤',
       quote: 'Dengan bantuan Meta Agency, saya berhasil meningkatkan engagement dan monetisasi channel saya secara signifikan. Mereka benar-benar memahami kebutuhan creator.',
       rating: 5,
     },
@@ -102,11 +102,13 @@ const TestimonialsSection = () => {
                       transition={{ duration: 0.7, type: 'spring', bounce: 0.5 }}
                       className="flex-shrink-0 relative"
                     >
-                      <img
-                        src={testimonials[currentIndex].image}
-                        alt={testimonials[currentIndex].name}
-                        className="w-24 h-24 rounded-full object-cover border-4 border-meta-blue shadow-lg"
-                      />
+                      <div
+                        className="w-24 h-24 rounded-full border-4 border-meta-blue shadow-lg flex items-center justify-center text-5xl bg-white"
+                        aria-label={testimonials[currentIndex].name}
+                        role="img"
+                      >
+                        {testimonials[currentIndex].image}
+                      </div>
                     </motion.div>
                     <div className="flex-1 text-center md:text-left">
                       <div className="flex justify-center md:justify-start space-x-1 mb-4">
