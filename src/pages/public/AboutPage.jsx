@@ -7,7 +7,7 @@ import Button from '../../components/common/Button';
 const AboutPage = () => {
   const stats = [
     { icon: Users, value: '800+', label: 'Active Creators', color: 'text-meta-blue' },
-    { icon: TrendingUp, value: '₹2.5B+', label: 'Monthly Revenue', color: 'text-green-500' },
+    { icon: TrendingUp, value: 'Rp.100M+', label: 'Monthly Revenue', color: 'text-green-500' },
     { icon: Award, value: '95%', label: 'Success Rate', color: 'text-yellow-500' },
     { icon: Heart, value: '50M+', label: 'Total Followers', color: 'text-red-500' },
   ];

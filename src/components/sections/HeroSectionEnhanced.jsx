@@ -15,7 +15,7 @@ const HeroSectionEnhanced = () => {
   
   const stats = [
     { icon: Users, label: 'Active Creators', value: '10,000+', color: 'text-meta-blue', bgColor: 'bg-blue-500/10' },
-    { icon: TrendingUp, label: 'Monthly Revenue', value: 'Rp 5B+', color: 'text-green-500', bgColor: 'bg-green-500/10' },
+    { icon: TrendingUp, label: 'Monthly Revenue', value: 'Rp.100M+', color: 'text-green-500', bgColor: 'bg-green-500/10' },
     { icon: Award, label: 'Success Rate', value: '95%', color: 'text-yellow-500', bgColor: 'bg-yellow-500/10' },
   ];
 
