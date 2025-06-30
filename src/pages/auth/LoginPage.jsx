@@ -1,40 +1,53 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Eye, EyeOff, Shield, Loader2, UserCheck, AlertTriangle, CheckCircle, Zap } from 'lucide-react';
+import { Eye, EyeOff, Loader2, UserCheck, AlertTriangle, CheckCircle, Mail, Lock, Shield } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import useThemeStore from '../../store/themeStore';
-import EnhancedInput from '../../components/common/EnhancedInput';
-
-// Debug log to help with chunk loading issues
-console.log('LoginPage component loaded successfully');
 
 const LoginPage = () => {
-  // Form state
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     rememberMe: false
   });
   
-  // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [validationErrors, setValidationErrors] = useState({});
   const [loginSuccess, setLoginSuccess] = useState(false);
-  const [showQuickLogin, setShowQuickLogin] = useState(false);
-  const [attempts, setAttempts] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Hooks
   const navigate = useNavigate();
   const { signIn, profile, user } = useAuthStore();
   const { theme } = useThemeStore();
 
+  // Redirect if already logged in
   useEffect(() => {
-    console.log('LoginPage component mounted successfully');
-    
-    // Load saved credentials if remember me was checked
+    if (user && profile) {
+      if (profile.role === 'admin') {
+        navigate('/admin', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
+    }
+  }, [user, profile, navigate]);
+
+  // Handle successful login redirect
+  useEffect(() => {
+    if (loginSuccess && profile) {
+      const timer = setTimeout(() => {
+        if (profile.role === 'admin') {
+          navigate('/admin', { replace: true });
+        } else {
+          navigate('/dashboard', { replace: true });
+        }
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [loginSuccess, profile, navigate]);
+
+  // Load saved credentials
+  useEffect(() => {
     const savedEmail = localStorage.getItem('rememberedEmail');
     const savedRemember = localStorage.getItem('rememberMe') === 'true';
     
@@ -47,77 +60,17 @@ const LoginPage = () => {
     }
   }, []);
 
-  // Navigation based on role
-  useEffect(() => {
-    if (loginSuccess && profile) {
-      const timer = setTimeout(() => {
-        if (profile.role === 'admin' || profile.role === 'superadmin') {
-          navigate('/admin', { replace: true });
-        } else if (profile.role === 'talent') {
-          navigate('/dashboard', { replace: true });
-        } else {
-          navigate('/', { replace: true });
-        }
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [loginSuccess, profile, navigate]);
-
-  // Form validation
-  const validateForm = useCallback(() => {
-    const errors = {};
-    
-    if (!formData.email) {
-      errors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      errors.email = 'Please enter a valid email address';
-    }
-    
-    if (!formData.password) {
-      errors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      errors.password = 'Password must be at least 6 characters';
-    }
-    
-    setValidationErrors(errors);
-    return Object.keys(errors).length === 0;
-  }, [formData]);
-
-  // Handle input changes
-  const handleInputChange = useCallback((field) => (e) => {
+  const handleInputChange = (field) => (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     setFormData(prev => ({ ...prev, [field]: value }));
-    
-    // Clear specific validation error when user starts typing
-    if (validationErrors[field]) {
-      setValidationErrors(prev => ({ ...prev, [field]: '' }));
-    }
-    
-    // Clear general error
-    if (error) {
-      setError('');
-    }
-  }, [validationErrors, error]);
-
-  // Quick admin login
-  const handleQuickAdminLogin = async () => {
-    setFormData({
-      email: 'admin@metaagency.id',
-      password: 'admin123',
-      rememberMe: false
-    });
-    
-    // Auto-submit after setting values
-    setTimeout(() => {
-      handleSubmit({ preventDefault: () => {} });
-    }, 100);
+    if (error) setError('');
   };
 
-  // Main form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!validateForm()) {
+    if (!formData.email || !formData.password) {
+      setError('Please fill in all fields');
       return;
     }
 
@@ -139,22 +92,20 @@ const LoginPage = () => {
         
         setLoginSuccess(true);
       } else {
-        setAttempts(prev => prev + 1);
-        setError(authError || 'Invalid email or password. Please try again.');
+        setError(authError || 'Invalid email or password');
       }
     } catch (err) {
-      setAttempts(prev => prev + 1);
-      setError('An unexpected error occurred. Please try again.');
+      setError('An error occurred. Please try again.');
       console.error('Login error:', err);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Login success animation
+  // Success screen
   if (loginSuccess) {
     return (
-      <div className={`min-h-screen flex items-center justify-center transition-colors duration-500 ${
+      <div className={`min-h-screen flex items-center justify-center ${
         theme === 'dark' ? 'bg-black' : 'bg-white'
       }`}>
         <motion.div
@@ -175,11 +126,11 @@ const LoginPage = () => {
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.4 }}
           >
-            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-meta-black'}`}>
-              Login Berhasil!
+            <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+              Login Successful!
             </h2>
-            <p className={`mt-2 ${theme === 'dark' ? 'text-meta-gray-400' : 'text-meta-gray-600'}`}>
-              Mengarahkan ke dashboard {profile?.role === 'admin' ? 'admin' : 'Anda'}...
+            <p className={`mt-2 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
+              Redirecting to your dashboard...
             </p>
           </motion.div>
         </motion.div>
@@ -188,213 +139,258 @@ const LoginPage = () => {
   }
 
   return (
-    <div className={`min-h-screen flex items-center justify-center transition-colors duration-500 ${
-      theme === 'dark' ? 'bg-black' : 'bg-white'
+    <div className={`min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 ${
+      theme === 'dark' 
+        ? 'bg-gradient-to-br from-meta-black via-meta-gray-900 to-meta-black' 
+        : 'bg-gradient-to-br from-meta-gray-50 via-meta-white to-meta-gray-100'
     }`}>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="max-w-md w-full mx-4 space-y-8"
-      >
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <motion.h1
-            initial={{ y: -20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.1 }}
-            className={`text-3xl font-extrabold transition-colors duration-500 ${
-              theme === 'dark' ? 'text-white' : 'text-meta-black'
-            }`}
-          >
-            Masuk ke Akun Anda
-          </motion.h1>
-          <motion.p
-            initial={{ y: -10, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className={`text-sm transition-colors duration-500 ${
-              theme === 'dark' ? 'text-meta-gray-400' : 'text-meta-gray-600'
-            }`}
-          >
-            Atau{' '}
-            <Link to="/join" className="font-medium text-meta-blue hover:text-cyan-500">
-              daftar sebagai talent baru
-            </Link>
-          </motion.p>
-        </div>
-
-        {/* Main Login Form */}
-        <motion.form
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="space-y-6"
-          onSubmit={handleSubmit}
+      <div className="max-w-md w-full">
+        {/* Card Container */}
+        <motion.div
+          initial={{ y: 20, opacity: 0, scale: 0.95 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className={`${
+            theme === 'dark' 
+              ? 'bg-meta-gray-800/95 border-meta-gray-700/50' 
+              : 'bg-meta-white/95 border-meta-gray-200/50'
+          } backdrop-blur-xl rounded-2xl shadow-2xl border p-8 space-y-8`}
         >
-          {/* General Error */}
-          <AnimatePresence>
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm"
+          {/* Logo & Header */}
+          <div className="text-center space-y-6">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+              className="mx-auto w-20 h-20 rounded-2xl bg-gradient-to-br from-meta-blue to-cyan-400 flex items-center justify-center shadow-lg relative overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-meta-blue/80 to-cyan-400/80"></div>
+              <Shield className="w-10 h-10 text-meta-white relative z-10" />
+            </motion.div>
+            
+            <div>
+              <motion.h1
+                initial={{ y: -20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className={`text-3xl font-display font-bold ${
+                  theme === 'dark' ? 'text-meta-white' : 'text-meta-black'
+                }`}
               >
-                <div className="flex items-center space-x-2">
-                  <AlertTriangle className="h-4 w-4 text-red-600" />
-                  <span className={theme === 'dark' ? 'text-red-400' : 'text-red-600'}>
-                    {error}
-                  </span>
+                Meta Agency
+              </motion.h1>
+              <motion.p
+                initial={{ y: -10, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className={`mt-2 text-sm font-medium ${
+                  theme === 'dark' ? 'text-meta-gray-400' : 'text-meta-gray-600'
+                }`}
+              >
+                Admin Portal Access
+              </motion.p>
+            </div>
+          </div>
+
+          {/* Form */}
+          <motion.form
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="space-y-6"
+            onSubmit={handleSubmit}
+          >
+            {/* Error Message */}
+            <AnimatePresence>
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  className={`${
+                    theme === 'dark' 
+                      ? 'bg-red-900/30 border-red-500/30' 
+                      : 'bg-red-50 border-red-200'
+                  } border rounded-xl p-4 backdrop-blur-sm`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="flex-shrink-0">
+                      <AlertTriangle className={`h-5 w-5 ${
+                        theme === 'dark' ? 'text-red-400' : 'text-red-500'
+                      }`} />
+                    </div>
+                    <p className={`text-sm font-medium ${
+                      theme === 'dark' ? 'text-red-300' : 'text-red-800'
+                    }`}>
+                      {error}
+                    </p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="space-y-6">
+              {/* Email Input */}
+              <motion.div
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.6 }}
+              >
+                <label htmlFor="email" className={`block text-sm font-display font-semibold mb-3 ${
+                  theme === 'dark' ? 'text-meta-gray-300' : 'text-meta-gray-700'
+                }`}>
+                  Email Address
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Mail className={`h-5 w-5 ${
+                      theme === 'dark' ? 'text-meta-gray-500' : 'text-meta-gray-400'
+                    }`} />
+                  </div>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={formData.email}
+                    onChange={handleInputChange('email')}
+                    className={`block w-full pl-12 pr-4 py-4 border rounded-xl focus:outline-none focus:ring-2 focus:ring-meta-blue focus:border-transparent transition-all duration-200 font-medium ${
+                      theme === 'dark' 
+                        ? 'bg-meta-gray-800/50 border-meta-gray-600 text-meta-white placeholder-meta-gray-500' 
+                        : 'bg-meta-white border-meta-gray-300 text-meta-black placeholder-meta-gray-400 shadow-sm'
+                    }`}
+                    placeholder="Enter your email address"
+                  />
                 </div>
-                {attempts > 0 && (
-                  <div className="mt-2 text-xs text-red-500">
-                    Percobaan gagal: {attempts}/5
+              </motion.div>
+
+              {/* Password Input */}
+              <motion.div
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.7 }}
+              >
+                <label htmlFor="password" className={`block text-sm font-display font-semibold mb-3 ${
+                  theme === 'dark' ? 'text-meta-gray-300' : 'text-meta-gray-700'
+                }`}>
+                  Password
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <Lock className={`h-5 w-5 ${
+                      theme === 'dark' ? 'text-meta-gray-500' : 'text-meta-gray-400'
+                    }`} />
+                  </div>
+                  <input
+                    id="password"
+                    name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    required
+                    value={formData.password}
+                    onChange={handleInputChange('password')}
+                    className={`block w-full pl-12 pr-14 py-4 border rounded-xl focus:outline-none focus:ring-2 focus:ring-meta-blue focus:border-transparent transition-all duration-200 font-medium ${
+                      theme === 'dark' 
+                        ? 'bg-meta-gray-800/50 border-meta-gray-600 text-meta-white placeholder-meta-gray-500' 
+                        : 'bg-meta-white border-meta-gray-300 text-meta-black placeholder-meta-gray-400 shadow-sm'
+                    }`}
+                    placeholder="Enter your password"
+                  />
+                  <button
+                    type="button"
+                    className={`absolute inset-y-0 right-0 pr-4 flex items-center rounded-r-xl transition-colors duration-200 ${
+                      theme === 'dark' 
+                        ? 'hover:bg-meta-gray-700/50' 
+                        : 'hover:bg-meta-gray-50'
+                    }`}
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className={`h-5 w-5 ${
+                        theme === 'dark' ? 'text-meta-gray-400 hover:text-meta-gray-300' : 'text-meta-gray-400 hover:text-meta-gray-600'
+                      }`} />
+                    ) : (
+                      <Eye className={`h-5 w-5 ${
+                        theme === 'dark' ? 'text-meta-gray-400 hover:text-meta-gray-300' : 'text-meta-gray-400 hover:text-meta-gray-600'
+                      }`} />
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+
+            {/* Remember me */}
+            <motion.div
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.8 }}
+              className="flex items-center justify-between"
+            >
+              <div className="flex items-center">
+                <input
+                  id="remember-me"
+                  name="remember-me"
+                  type="checkbox"
+                  checked={formData.rememberMe}
+                  onChange={handleInputChange('rememberMe')}
+                  className="h-4 w-4 text-meta-blue focus:ring-meta-blue border-meta-gray-300 rounded transition-colors"
+                />
+                <label htmlFor="remember-me" className={`ml-3 block text-sm font-medium ${
+                  theme === 'dark' ? 'text-meta-gray-300' : 'text-meta-gray-700'
+                }`}>
+                  Keep me signed in for 24 hours
+                </label>
+              </div>
+            </motion.div>
+
+            {/* Submit button */}
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.9 }}
+            >
+              <button
+                type="submit"
+                disabled={isLoading}
+                className={`group relative w-full flex justify-center py-4 px-6 border border-transparent text-base font-display font-semibold rounded-xl text-meta-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-meta-blue disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02] ${
+                  isLoading 
+                    ? 'bg-meta-gray-400 cursor-not-allowed' 
+                    : 'bg-gradient-to-r from-meta-blue to-cyan-400 hover:from-meta-blue/90 hover:to-cyan-400/90 shadow-lg hover:shadow-xl'
+                }`}
+              >
+                {isLoading ? (
+                  <div className="flex items-center space-x-3">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span>Authenticating...</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-3">
+                    <UserCheck className="h-5 w-5" />
+                    <span>Access Admin Portal</span>
                   </div>
                 )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Email Input */}
-          <div>
-            <label className={`block text-sm font-medium mb-2 transition-colors duration-500 ${
-              theme === 'dark' ? 'text-meta-gray-300' : 'text-meta-gray-700'
-            }`}>
-              Email Address
-            </label>
-            <div className="relative">
-              <input
-                type="email"
-                value={formData.email}
-                onChange={handleInputChange('email')}
-                placeholder="enter your email"
-                autoComplete="email"
-                required
-                disabled={isLoading}
-                className={`w-full px-4 py-3 rounded-lg border transition-all duration-200 ${
-                  theme === 'dark' 
-                    ? 'bg-meta-gray-800/50 border-meta-gray-700 text-white placeholder-meta-gray-500' 
-                    : 'bg-white border-meta-gray-300 text-meta-black placeholder-meta-gray-400'
-                } ${validationErrors.email 
-                  ? 'border-red-500 ring-2 ring-red-500/20' 
-                  : 'focus:border-meta-blue focus:ring-2 focus:ring-meta-blue/20'
-                } focus:outline-none disabled:opacity-50`}
-              />
-            </div>
-            {validationErrors.email && (
-              <motion.p
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-1 text-sm text-red-500 flex items-center space-x-1"
-              >
-                <AlertTriangle className="h-4 w-4" />
-                <span>{validationErrors.email}</span>
-              </motion.p>
-            )}
-          </div>
-
-          {/* Password Input */}
-          <div>
-            <label className={`block text-sm font-medium mb-2 transition-colors duration-500 ${
-              theme === 'dark' ? 'text-meta-gray-300' : 'text-meta-gray-700'
-            }`}>
-              Password
-            </label>
-            <div className="relative">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={formData.password}
-                onChange={handleInputChange('password')}
-                placeholder="enter your password"
-                autoComplete="current-password"
-                required
-                disabled={isLoading}
-                className={`w-full px-4 py-3 pr-12 rounded-lg border transition-all duration-200 ${
-                  theme === 'dark' 
-                    ? 'bg-meta-gray-800/50 border-meta-gray-700 text-white placeholder-meta-gray-500' 
-                    : 'bg-white border-meta-gray-300 text-meta-black placeholder-meta-gray-400'
-                } ${validationErrors.password 
-                  ? 'border-red-500 ring-2 ring-red-500/20' 
-                  : 'focus:border-meta-blue focus:ring-2 focus:ring-meta-blue/20'
-                } focus:outline-none disabled:opacity-50`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center hover:bg-gray-100 rounded-r-lg transition-colors duration-200"
-                tabIndex={-1}
-              >
-                {showPassword ? (
-                  <EyeOff className="h-5 w-5 text-meta-gray-500 hover:text-meta-gray-700" />
-                ) : (
-                  <Eye className="h-5 w-5 text-meta-gray-500 hover:text-meta-gray-700" />
-                )}
               </button>
-            </div>
-            {validationErrors.password && (
-              <motion.p
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-1 text-sm text-red-500 flex items-center space-x-1"
-              >
-                <AlertTriangle className="h-4 w-4" />
-                <span>{validationErrors.password}</span>
-              </motion.p>
-            )}
-          </div>
+            </motion.div>
 
-          {/* Remember Me & Forgot Password */}
-          <div className="flex items-center justify-between">
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={formData.rememberMe}
-                onChange={handleInputChange('rememberMe')}
-                disabled={isLoading}
-                className="h-4 w-4 rounded border-gray-300 text-meta-blue focus:ring-meta-blue transition-colors"
-              />
-              <span className={`text-sm ${theme === 'dark' ? 'text-meta-gray-400' : 'text-meta-gray-600'}`}>
-                Ingat saya
-              </span>
-            </label>
-
-          </div>
-
-          {/* Submit Button */}
-          <motion.button
-            type="submit"
-            disabled={isLoading}
-            whileHover={{ scale: isLoading ? 1 : 1.02 }}
-            whileTap={{ scale: isLoading ? 1 : 0.98 }}
-            className="w-full bg-meta-blue text-white py-3 px-4 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-meta-blue-dark focus:outline-none focus:ring-2 focus:ring-meta-blue/50 flex items-center justify-center space-x-2"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span>Memproses...</span>
-              </>
-            ) : (
-              <>
-                <UserCheck className="h-5 w-5" />
-                <span>Masuk</span>
-              </>
-            )}
-          </motion.button>
-        </motion.form>
-
-        {/* Footer */}
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          className="text-center text-xs text-meta-gray-400 space-y-2"
-        >
-          <p>Powered by Meta Agency</p>
+            {/* Security Notice */}
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 1.0 }}
+              className="text-center"
+            >
+              <p className={`text-xs ${
+                theme === 'dark' ? 'text-meta-gray-500' : 'text-meta-gray-500'
+              }`}>
+                Protected by Meta Agency Security
+              </p>
+            </motion.div>
+          </motion.form>
         </motion.div>
-      </motion.div>
+      </div>
     </div>
   );
 };
 
-export default LoginPage; 
+export default LoginPage;

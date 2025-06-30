@@ -38,7 +38,7 @@ const AdminLayout = ({ children, title, showBackButton = false, compact = false 
           // Clean up upload state before logout
           localStorage.removeItem('adminUploadActive');
           signOut();
-          navigate('/auth/login', { replace: true });
+          navigate('/login', { replace: true });
         }
       }
     };

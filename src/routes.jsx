@@ -2,10 +2,11 @@ import React, { Suspense, lazy, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Navbar from './components/common/Navbar';
 import Footer from './components/common/Footer';
+import Toast from './components/common/Toast';
 import useAuthStore from './store/authStore';
 import useThemeStore from './store/themeStore';
 import useSidebarStore from './store/sidebarStore';
-import { Sun, Moon, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 
 // Helper function for reliable lazy loading with retry
 const lazyLoad = (importFunc, retries = 3) => {
@@ -43,6 +44,8 @@ const Privacy = lazyLoad(() => import('./pages/public/Privacy'));
 const Terms = lazyLoad(() => import('./pages/public/Terms'));
 const Disclaimer = lazyLoad(() => import('./pages/public/Disclaimer'));
 const LoginPage = lazyLoad(() => import('./pages/auth/LoginPage'));
+const BulletproofLogin = lazyLoad(() => import('./pages/auth/BulletproofLogin'));
+const AuthTest = lazyLoad(() => import('./pages/AuthTest'));
 const NotFound = lazyLoad(() => import('./pages/public/NotFound'));
 const BonusContent = lazyLoad(() => import('./pages/public/BonusContentEnhanced'));
 const ArticleDetail = lazyLoad(() => import('./pages/public/ArticleDetail'));
@@ -114,16 +117,61 @@ function ScrollToTop() {
 
 function ProtectedRoute({ children, requiredRole }) {
   const { user, profile, loading } = useAuthStore();
-  if (loading) return null;
   
+  // Add extra logging for debugging
+  console.log('🛡️ ProtectedRoute check:', { 
+    user: !!user, 
+    profile: profile?.role, 
+    loading, 
+    requiredRole,
+    timestamp: new Date().toISOString()
+  });
+  
+  // Show loading spinner while auth is initializing
+  if (loading) {
+    console.log('⏳ Auth loading, showing spinner...');
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-meta-blue mx-auto"></div>
+          <p className="text-meta-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Check if user exists
   if (!user) {
+    console.log('🚫 No user found, redirecting to login...');
     return <Navigate to="/login" replace />;
   }
 
-  if (requiredRole && profile?.role !== requiredRole) {
-    return <Navigate to="/dashboard" replace />;
+  // Check if profile is required and exists
+  if (!profile) {
+    console.log('⚠️ No profile found, waiting for profile fetch...');
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-meta-blue mx-auto"></div>
+          <p className="text-meta-gray-600">Loading profile...</p>
+        </div>
+      </div>
+    );
   }
 
+  // Check role requirements
+  if (requiredRole && profile.role !== requiredRole) {
+    console.log('⚠️ Insufficient role, redirecting...', { required: requiredRole, actual: profile.role });
+    if (profile.role === 'admin') {
+      return <Navigate to="/admin" replace />;
+    } else if (profile.role === 'talent') {
+      return <Navigate to="/dashboard" replace />;
+    } else {
+      return <Navigate to="/" replace />;
+    }
+  }
+
+  console.log('✅ Access granted for role:', profile?.role);
   return children;
 }
 
@@ -132,6 +180,18 @@ function AdminLayout({ children }) {
   const { signOut } = useAuthStore();
   const { isOpen } = useSidebarStore();
   const location = useLocation();
+  const [toast, setToast] = React.useState({ isVisible: false, message: '', type: 'info', title: '' });
+  
+  // Handle logout with toast notification
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      setToast({ isVisible: true, message: 'Berhasil logout. Sampai jumpa!', type: 'success', title: 'Logout Berhasil' });
+    } catch (error) {
+      setToast({ isVisible: true, message: 'Gagal logout. Silakan coba lagi.', type: 'error', title: 'Error' });
+    }
+  };
+  
   // Force light mode for admin on mount and on route change
   useEffect(() => {
     document.documentElement.classList.remove('dark');
@@ -165,7 +225,7 @@ function AdminLayout({ children }) {
           <div className="flex items-center space-x-4">
             {/* Theme toggle is hidden/disabled in admin */}
             <button
-              onClick={signOut}
+              onClick={handleLogout}
               className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium text-meta-gray-600 hover:text-red-500 hover:bg-meta-gray-100 transition-colors`}
             >
               <LogOut className="w-5 h-5 mr-2" /> Logout
@@ -176,6 +236,19 @@ function AdminLayout({ children }) {
           {children}
         </main>
       </div>
+      
+      {/* Toast Notifications */}
+      {toast.isVisible && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          title={toast.title}
+          isVisible={toast.isVisible}
+          onClose={() => setToast(t => ({ ...t, isVisible: false }))}
+          duration={3000}
+          position="top-right"
+        />
+      )}
     </div>
   );
 }
@@ -204,6 +277,16 @@ function AppRoutes() {
             <Route path="/terms" element={<Terms />} />
             <Route path="/disclaimer" element={<Disclaimer />} />
             <Route path="/login" element={
+              <ErrorBoundary>
+                <LoginPage />
+              </ErrorBoundary>
+            } />
+            <Route path="/auth-test" element={
+              <ErrorBoundary>
+                <AuthTest />
+              </ErrorBoundary>
+            } />
+            <Route path="/old-login" element={
               <ErrorBoundary>
                 <LoginPage />
               </ErrorBoundary>

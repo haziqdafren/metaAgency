@@ -1,150 +1,150 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 
+// Professional Authentication Store - Production Ready
 const useAuthStore = create((set, get) => ({
   user: null,
   profile: null,
   loading: true,
   error: null,
 
-  // Initialize auth state
+  // Initialize auth state - Clean and Simple
   initialize: async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user) {
-        await get().fetchProfile(user.id);
-      }
-      
-      set({ user, loading: false });
-    } catch (error) {
-      set({ error: error.message, loading: false });
-    }
-  },
-
-  // Fetch user profile based on role
-  fetchProfile: async (userId) => {
-    try {
-      // First get the user's role
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', userId)
-        .single();
-
-      if (userError) throw userError;
-
-      let profile = null;
-
-      if (userData.role === 'talent') {
-        const { data, error } = await supabase
-          .from('talent_profiles')
-          .select('*')
-          .eq('user_id', userId)
-          .single();
-        
-        if (error) throw error;
-        profile = { ...data, role: 'talent' };
-      } else if (userData.role === 'admin' || userData.role === 'superadmin') {
-        const { data, error } = await supabase
-          .from('admin_profiles')
-          .select('*')
-          .eq('user_id', userId)
-          .single();
-        
-        if (error) throw error;
-        profile = { ...data, role: userData.role };
-      }
-
-      set({ profile });
-    } catch (error) {
-      set({ error: error.message });
-    }
-  },
-
-  // Sign in
-  signIn: async (email, password) => {
-    try {
+      console.log('🔐 Initializing authentication...');
       set({ loading: true, error: null });
-      
-      // First check if it's an admin user
-      const { data: adminData, error: adminError } = await supabase
-        .from('admins')
-        .select('*')
-        .eq('email', email)
-        .single();
 
-      if (adminData) {
-        // Admin user found - check password
-        if (adminData.password_hash === password) {
-          // Create a mock user object for admin
-          const adminUser = {
-            id: adminData.id,
-            email: adminData.email,
-            role: 'admin'
-          };
-          
-          const adminProfile = {
-            id: adminData.id,
-            user_id: adminData.id,
-            name: adminData.name,
-            email: adminData.email,
-            role: 'admin',
-            created_at: adminData.created_at
-          };
+      // Check for stored admin session
+      const adminSession = localStorage.getItem('adminSession');
+      if (adminSession) {
+        try {
+          const sessionData = JSON.parse(adminSession);
+          const sessionAge = Date.now() - sessionData.timestamp;
+          const maxAge = 24 * 60 * 60 * 1000; // 24 hours
 
-          // Set session timestamp for admin login
-          localStorage.setItem('adminSessionStart', Date.now().toString());
-
-          set({ 
-            user: adminUser, 
-            profile: adminProfile, 
-            loading: false 
-          });
-          
-          return { success: true };
-        } else {
-          throw new Error('Invalid password');
+          if (sessionAge < maxAge) {
+            console.log('✅ Restoring admin session');
+            set({
+              user: sessionData.user,
+              profile: sessionData.profile,
+              loading: false
+            });
+            return;
+          } else {
+            localStorage.removeItem('adminSession');
+          }
+        } catch (e) {
+          localStorage.removeItem('adminSession');
         }
       }
 
-      // If not admin, try regular Supabase auth
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      // Check Supabase auth
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        console.log('✅ Supabase user found');
+        const profile = {
+          id: user.id,
+          email: user.email,
+          name: user.email?.split('@')[0] || 'User',
+          role: 'user'
+        };
+        set({ user, profile, loading: false });
+      } else {
+        set({ user: null, profile: null, loading: false });
+      }
 
-      if (error) throw error;
-
-      await get().fetchProfile(data.user.id);
-      set({ user: data.user, loading: false });
-      
-      return { success: true };
     } catch (error) {
+      console.error('❌ Auth initialization error:', error);
       set({ error: error.message, loading: false });
-      return { success: false, error: error.message };
     }
   },
 
-  // Sign up
-  signUp: async (email, password, metadata = {}) => {
+  // Sign in - Works with both admin and regular users
+  signIn: async (email, password) => {
     try {
+      console.log('🔐 Signing in:', email);
       set({ loading: true, error: null });
-      
-      const { data, error } = await supabase.auth.signUp({
+
+      // Try admin authentication first
+      const { data: adminList, error: adminError } = await supabase
+        .from('admins')
+        .select('*')
+        .eq('email', email);
+
+      if (!adminError && adminList && adminList.length > 0) {
+        const admin = adminList[0];
+        
+        if (admin.password_hash === password) {
+          console.log('✅ Admin login successful');
+          
+          const adminUser = {
+            id: admin.id,
+            email: admin.email
+          };
+          
+          const adminProfile = {
+            id: admin.id,
+            email: admin.email,
+            name: admin.name,
+            role: 'admin'
+          };
+
+          // Store session
+          const sessionData = {
+            user: adminUser,
+            profile: adminProfile,
+            timestamp: Date.now()
+          };
+          localStorage.setItem('adminSession', JSON.stringify(sessionData));
+
+          set({
+            user: adminUser,
+            profile: adminProfile,
+            loading: false
+          });
+
+          return { success: true };
+        }
+      }
+
+      // Try Supabase authentication
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password,
-        options: {
-          data: metadata,
-        },
+        password
       });
 
-      if (error) throw error;
+      if (!error && data.user) {
+        console.log('✅ Supabase login successful');
+        
+        const profile = {
+          id: data.user.id,
+          email: data.user.email,
+          name: data.user.email?.split('@')[0] || 'User',
+          role: 'user'
+        };
 
-      set({ loading: false });
-      return { success: true, data };
+        set({
+          user: data.user,
+          profile,
+          loading: false
+        });
+
+        return { success: true };
+      }
+
+      // Authentication failed
+      set({
+        loading: false,
+        error: 'Invalid email or password'
+      });
+      return { success: false, error: 'Invalid email or password' };
+
     } catch (error) {
-      set({ error: error.message, loading: false });
+      console.error('❌ Sign in error:', error);
+      set({
+        error: error.message,
+        loading: false
+      });
       return { success: false, error: error.message };
     }
   },
@@ -152,48 +152,30 @@ const useAuthStore = create((set, get) => ({
   // Sign out
   signOut: async () => {
     try {
-      set({ loading: true });
-      // Remove admin session timestamp on sign out
-      localStorage.removeItem('adminSessionStart');
-      const { error } = await supabase.auth.signOut();
+      console.log('🚪 Signing out...');
       
-      if (error) throw error;
+      // Clear admin session
+      localStorage.removeItem('adminSession');
       
-      set({ user: null, profile: null, loading: false });
+      // Sign out from Supabase
+      await supabase.auth.signOut();
+      
+      set({
+        user: null,
+        profile: null,
+        loading: false,
+        error: null
+      });
+
       return { success: true };
     } catch (error) {
-      set({ error: error.message, loading: false });
-      return { success: false, error: error.message };
-    }
-  },
-
-  // Update profile
-  updateProfile: async (updates) => {
-    try {
-      const { profile } = get();
-      if (!profile) throw new Error('No profile found');
-
-      const table = profile.role === 'talent' ? 'talent_profiles' : 'admin_profiles';
-      
-      const { data, error } = await supabase
-        .from(table)
-        .update(updates)
-        .eq('id', profile.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      set({ profile: { ...profile, ...data } });
-      return { success: true, data };
-    } catch (error) {
-      set({ error: error.message });
+      console.error('❌ Sign out error:', error);
       return { success: false, error: error.message };
     }
   },
 
   // Clear error
-  clearError: () => set({ error: null }),
+  clearError: () => set({ error: null })
 }));
 
-export default useAuthStore; 
+export default useAuthStore;
