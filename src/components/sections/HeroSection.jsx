@@ -1,28 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Play, Users, TrendingUp, Award } from 'lucide-react';
+import { ArrowRight, Users, TrendingUp, Award } from 'lucide-react';
 import { motion } from 'framer-motion';
 import useThemeStore from '../../store/themeStore';
 
-// 3D illustration asset (replace with your own or use /public/meta.webp)
-import meta3D from '../../logo.svg'; // fallback if you want to use a local SVG
-
 const HeroSection = () => {
-  const [currentStat, setCurrentStat] = useState(0);
   const { theme } = useThemeStore();
 
   const stats = [
-    { icon: Users, label: 'Active Creators', value: '800+', color: 'text-meta-blue' },
-    { icon: TrendingUp, label: 'Monthly Revenue', value: 'Rp. 100M+', color: 'text-green-500' },
-    { icon: Award, label: 'Success Rate', value: '95%', color: 'text-yellow-500' },
+    { icon: Users, label: 'Creator Aktif', value: '120+', color: 'text-meta-blue' },
+    { icon: TrendingUp, label: 'Diamonds / Bulan', value: '500K+', color: 'text-green-500' },
+    { icon: Award, label: 'Bergabung Sejak', value: '2024', color: 'text-yellow-500' },
   ];
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentStat((prev) => (prev + 1) % stats.length);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
 
   // SVG background as a string
   const svgBg = `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`;
@@ -38,33 +27,10 @@ const HeroSection = () => {
         />
       </div>
 
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 z-0">
-        <motion.div
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.3, 0.5, 0.3],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-          className="absolute top-20 left-20 w-96 h-96 bg-meta-blue rounded-full blur-3xl"
-        />
-        <motion.div
-          animate={{
-            scale: [1, 1.3, 1],
-            opacity: [0.2, 0.4, 0.2],
-          }}
-          transition={{
-            duration: 10,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 2,
-          }}
-          className="absolute bottom-20 right-20 w-96 h-96 bg-cyan-500 rounded-full blur-3xl"
-        />
+      {/* Subtle background accent */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <div className={`absolute top-1/4 left-1/4 w-64 h-64 bg-meta-blue rounded-full blur-3xl ${theme === 'dark' ? 'opacity-10' : 'opacity-5'}`} />
+        <div className={`absolute bottom-1/4 right-1/4 w-48 h-48 bg-cyan-500 rounded-full blur-3xl ${theme === 'dark' ? 'opacity-10' : 'opacity-5'}`} />
       </div>
 
       {/* Content */}
@@ -102,9 +68,9 @@ const HeroSection = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className={`text-xl md:text-2xl mb-8 max-w-3xl mx-auto transition-colors duration-500 ${theme === 'dark' ? 'text-meta-gray-300' : 'text-meta-gray-800'}`}
+            className={`text-lg md:text-xl mb-8 max-w-2xl mx-auto ${theme === 'dark' ? 'text-meta-gray-300' : 'text-meta-gray-600'}`}
           >
-            Bergabunglah dengan 800+ creator sukses yang telah mengembangkan karir mereka bersama Meta Agency
+            Kami membantu creator TikTok tumbuh secara konsisten — dari manajemen akun, strategi LIVE, hingga pembayaran bonus yang transparan.
           </motion.p>
 
           {/* CTA Buttons */}
@@ -127,38 +93,33 @@ const HeroSection = () => {
             </button> */}
           </motion.div>
 
-          {/* Animated Stats */}
-          <motion.div
-            className="grid grid-cols-1 md:grid-cols-3 gap-8"
-          >
+          {/* Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {stats.map((stat, index) => {
               const Icon = stat.icon;
               return (
                 <motion.div
                   key={stat.label}
-                  initial={{ opacity: 0, y: 50 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, amount: 0.5 }}
-                  transition={{ duration: 0.6, delay: index * 0.1 }}
-                  whileHover={{ scale: 1.05, boxShadow: "0 10px 20px rgba(0,0,0,0.1)" }}
-                  whileTap={{ scale: 0.95 }}
-                  animate={{
-                    scale: currentStat === index ? 1.05 : 1,
-                    opacity: currentStat === index ? 1 : 0.7,
-                  }}
-                  transition={{ duration: 0.3 }}
-                  className="relative group"
+                  initial={{ opacity: 0, y: 24 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.4 + index * 0.1 }}
+                  className={`rounded-xl p-6 border transition-colors duration-300 ${
+                    theme === 'dark'
+                      ? 'bg-white/5 border-white/10'
+                      : 'bg-white border-gray-200 shadow-sm'
+                  }`}
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-meta-blue/20 to-cyan-500/20 rounded-xl blur-xl group-hover:blur-2xl transition-all" />
-                  <div className={`relative backdrop-blur-sm rounded-xl p-6 border transition-colors duration-500 ${theme === 'dark' ? 'bg-black/50 border-meta-gray-800' : 'bg-white border-meta-gray-200'}`}>
-                    <Icon className={`w-8 h-8 ${stat.color} mb-3 mx-auto`} />
-                    <h3 className={`text-3xl font-bold mb-1 transition-colors duration-500 ${theme === 'dark' ? 'text-white' : 'text-meta-black'}`}>{stat.value}</h3>
-                    <p className={`transition-colors duration-500 ${theme === 'dark' ? 'text-meta-gray-400' : 'text-meta-black'}`}>{stat.label}</p>
-                  </div>
+                  <Icon className={`w-7 h-7 ${stat.color} mb-3 mx-auto`} />
+                  <h3 className={`text-3xl font-bold mb-1 ${theme === 'dark' ? 'text-white' : 'text-meta-black'}`}>
+                    {stat.value}
+                  </h3>
+                  <p className={`text-sm ${theme === 'dark' ? 'text-meta-gray-400' : 'text-meta-gray-600'}`}>
+                    {stat.label}
+                  </p>
                 </motion.div>
               );
             })}
-          </motion.div>
+          </div>
         </div>
       </div>
 

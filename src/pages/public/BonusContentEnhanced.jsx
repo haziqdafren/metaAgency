@@ -59,6 +59,25 @@ function calculateSummary(allData, eligibleData) {
   };
 }
 
+// Fallback dummy data for demo/offline mode
+const DUMMY_BONUS_DATA = [
+  { id: 'd1', creator: { username_tiktok: 'skyauramlbb' },      month: 6, year: 2025, diamonds: 39623, valid_days: 25, live_hours: 103.15, tier: 'A', bonus_amount_idr: 3169840, payment_status: 'paid' },
+  { id: 'd2', creator: { username_tiktok: 'syviraau_' },        month: 6, year: 2025, diamonds: 59500, valid_days: 23, live_hours: 87.92,  tier: 'A', bonus_amount_idr: 4760000, payment_status: 'paid' },
+  { id: 'd3', creator: { username_tiktok: 'aimstarsayless' },   month: 6, year: 2025, diamonds: 13839, valid_days: 28, live_hours: 185.38, tier: 'A', bonus_amount_idr: 1107120, payment_status: 'paid' },
+  { id: 'd4', creator: { username_tiktok: 'caramelnihdeck' },   month: 6, year: 2025, diamonds: 10370, valid_days: 21, live_hours: 67.65,  tier: 'B', bonus_amount_idr: 725900,  payment_status: 'pending' },
+  { id: 'd5', creator: { username_tiktok: 'rrq_cast' },         month: 6, year: 2025, diamonds: 15715, valid_days: 19, live_hours: 76.10,  tier: 'B', bonus_amount_idr: 1100050, payment_status: 'pending' },
+  { id: 'd6', creator: { username_tiktok: 'hann.n14' },         month: 6, year: 2025, diamonds: 10694, valid_days: 15, live_hours: 83.55,  tier: 'C', bonus_amount_idr: 641640,  payment_status: 'pending' },
+  { id: 'd7', creator: { username_tiktok: 'instrumerald' },     month: 6, year: 2025, diamonds: 5038,  valid_days: 21, live_hours: 93.97,  tier: 'B', bonus_amount_idr: 352660,  payment_status: 'pending' },
+  { id: 'd8', creator: { username_tiktok: 'bangijumm_' },       month: 6, year: 2025, diamonds: 7860,  valid_days: 26, live_hours: 129.77, tier: 'A', bonus_amount_idr: 628800,  payment_status: 'pending' },
+  { id: 'd9', creator: { username_tiktok: 'ajijunmei' },        month: 6, year: 2025, diamonds: 3392,  valid_days: 28, live_hours: 176.87, tier: 'A', bonus_amount_idr: 271360,  payment_status: 'pending' },
+  { id: 'd10', creator: { username_tiktok: 'takumo_pubgm' },    month: 6, year: 2025, diamonds: 8076,  valid_days: 17, live_hours: 46.38,  tier: 'C', bonus_amount_idr: 484560,  payment_status: 'pending' },
+  { id: 'd11', creator: { username_tiktok: 'bocahrudal' },      month: 6, year: 2025, diamonds: 3893,  valid_days: 21, live_hours: 60.02,  tier: 'B', bonus_amount_idr: 272510,  payment_status: 'pending' },
+  { id: 'd12', creator: { username_tiktok: 'drewdoang' },       month: 6, year: 2025, diamonds: 2689,  valid_days: 19, live_hours: 110.35, tier: 'B', bonus_amount_idr: 188230,  payment_status: 'pending' },
+  { id: 'd13', creator: { username_tiktok: 'maaaarrriio_' },    month: 6, year: 2025, diamonds: 3275,  valid_days: 23, live_hours: 118.00, tier: 'A', bonus_amount_idr: 262000,  payment_status: 'pending' },
+  { id: 'd14', creator: { username_tiktok: 'vertii_' },         month: 6, year: 2025, diamonds: 3216,  valid_days: 16, live_hours: 84.95,  tier: 'C', bonus_amount_idr: 192960,  payment_status: 'pending' },
+  { id: 'd15', creator: { username_tiktok: 'aku.divaaa_' },     month: 6, year: 2025, diamonds: 7847,  valid_days: 12, live_hours: 30.10,  tier: null, bonus_amount_idr: 0,       payment_status: 'pending' },
+];
+
 const BonusContentEnhanced = () => {
   const { theme } = useThemeStore();
   const [loading, setLoading] = useState(true);
@@ -90,19 +109,32 @@ const BonusContentEnhanced = () => {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      setError('');
       try {
-        // Fetch bonus calculations for the selected month/year
         const { data: bonuses, error: bonusError } = await supabase
           .from('bonus_calculations')
           .select(`*, creator:creators(username_tiktok, creator_id)`)
           .eq('month', selectedMonth)
           .eq('year', selectedYear)
           .order('bonus_amount_idr', { ascending: false });
-        if (bonusError) throw bonusError;
-        setBonusData(bonuses || []);
-        setSummary(calculateSummary(bonuses || [], (bonuses || []).filter(c => c.bonus_amount_idr > 0)));
-      } catch (err) {
-        setError(err.message);
+
+        if (bonusError || !bonuses || bonuses.length === 0) {
+          // Use dummy data when Supabase is unavailable or returns empty
+          setBonusData(DUMMY_BONUS_DATA);
+          setSummary(calculateSummary(
+            DUMMY_BONUS_DATA,
+            DUMMY_BONUS_DATA.filter(c => c.bonus_amount_idr > 0)
+          ));
+        } else {
+          setBonusData(bonuses);
+          setSummary(calculateSummary(bonuses, bonuses.filter(c => c.bonus_amount_idr > 0)));
+        }
+      } catch {
+        setBonusData(DUMMY_BONUS_DATA);
+        setSummary(calculateSummary(
+          DUMMY_BONUS_DATA,
+          DUMMY_BONUS_DATA.filter(c => c.bonus_amount_idr > 0)
+        ));
       } finally {
         setLoading(false);
       }
@@ -242,11 +274,11 @@ const BonusContentEnhanced = () => {
         animate={{ opacity: 1, y: 0 }}
         className="text-center mb-12"
       >
-        <h1 className="text-4xl font-bold mb-4 bg-gradient-to-r from-meta-blue to-cyan-500 bg-clip-text text-transparent">
-          Talent Bonus Dashboard
+        <h1 className={`text-4xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-meta-black'}`}>
+          Info Bonus Talent
         </h1>
-        <p className="text-lg text-meta-gray-600 dark:text-meta-gray-400 mb-8">
-          Track your performance and bonus earnings
+        <p className="text-base text-meta-gray-600 dark:text-meta-gray-400 mb-8 max-w-lg mx-auto">
+          Cek performa dan estimasi bonus berdasarkan hasil LIVE bulan ini.
         </p>
       </motion.div>
 
@@ -569,20 +601,29 @@ const BonusContentEnhanced = () => {
           className="mb-8"
         >
           <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold mb-4">🏆 Top Performers This Month</h2>
-            <p className="text-lg text-meta-gray-600 dark:text-meta-gray-400">
-              Congratulations to our highest earning talents!
+            <h2 className={`text-2xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-meta-black'}`}>
+              Top Performers Bulan Ini
+            </h2>
+            <p className="text-sm text-meta-gray-600 dark:text-meta-gray-400">
+              Creator dengan performa bonus tertinggi periode ini.
             </p>
           </div>
-          
+
+          {/* rank-specific card colors */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {topPerformers.map((performer, index) => (
+            {topPerformers.map((performer, index) => {
+              const cardColors = [
+                'from-amber-500 to-yellow-600',   // #1 gold
+                'from-slate-400 to-slate-600',    // #2 silver
+                'from-orange-600 to-amber-700',   // #3 bronze
+              ];
+              return (
               <motion.div
                 key={performer.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.2 }}
-                className="relative bg-gradient-to-br from-meta-blue to-cyan-500 rounded-xl p-6 text-white overflow-hidden"
+                transition={{ delay: index * 0.15 }}
+                className={`relative bg-gradient-to-br ${cardColors[index] || 'from-slate-500 to-slate-700'} rounded-xl p-6 text-white overflow-hidden`}
               >
                 {/* Rank Badge */}
                 <div className="absolute top-4 right-4 w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-lg font-bold">
@@ -625,7 +666,8 @@ const BonusContentEnhanced = () => {
                   </div>
                 </div>
               </motion.div>
-            ))}
+              );
+            })}
           </div>
         </motion.section>
       )}

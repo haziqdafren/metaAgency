@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, ChevronDown, User, LogOut, LayoutDashboard, Sun, Moon } from 'lucide-react';
+import { Menu, X, ChevronDown, User, LogOut, LayoutDashboard, Sun, Moon, LogIn } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import useAuthStore from '../../store/authStore';
 import useThemeStore from '../../store/themeStore';
@@ -178,6 +178,17 @@ const Navbar = () => {
               ) : (
                 <>
                   <Link
+                    to="/login"
+                    className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-lg border transition-colors duration-200 ${
+                      theme === 'dark'
+                        ? 'border-meta-gray-700 text-meta-gray-300 hover:text-white hover:border-meta-gray-500'
+                        : 'border-gray-200 text-meta-gray-700 hover:text-meta-black hover:border-gray-400'
+                    }`}
+                  >
+                    <LogIn className="w-4 h-4" />
+                    Login
+                  </Link>
+                  <Link
                     to="/join"
                     className="btn btn-primary px-5 py-2.5 text-base shadow-md"
                   >
@@ -285,10 +296,21 @@ const Navbar = () => {
                     </button>
                   </div>
                 ) : (
-                  <div className="border-t border-gray-700 pt-4 mt-4">
+                  <div className="border-t border-gray-700 pt-4 mt-4 space-y-3">
+                    <Link
+                      to="/login"
+                      className={`w-full flex items-center justify-center gap-2 py-2.5 px-5 rounded-lg text-base font-semibold border transition-colors ${
+                        theme === 'dark'
+                          ? 'border-meta-gray-600 text-meta-gray-300 hover:text-white'
+                          : 'border-gray-300 text-meta-gray-700 hover:text-meta-black'
+                      }`}
+                    >
+                      <LogIn className="w-4 h-4" />
+                      Login
+                    </Link>
                     <Link
                       to="/join"
-                      className="w-full text-center py-2.5 px-5 bg-meta-blue text-white rounded-lg text-base font-semibold shadow-md hover:bg-meta-blue/90 transition"
+                      className="w-full text-center block py-2.5 px-5 bg-meta-blue text-white rounded-lg text-base font-semibold shadow-md hover:bg-meta-blue/90 transition"
                     >
                       Gabung Sekarang
                     </Link>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 375 375" width="375" height="375">
+  <!-- White background -->
+  <rect width="375" height="375" rx="60" ry="60" fill="#ffffff"/>
+  <!-- Meta Agency logo centered with slight padding -->
+  <image href="/meta.webp" x="12" y="12" width="351" height="351"/>
+</svg>

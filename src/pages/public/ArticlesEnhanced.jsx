@@ -6,6 +6,82 @@ import useThemeStore from '../../store/themeStore';
 import { Link } from 'react-router-dom';
 import Button from '../../components/common/Button';
 
+// Fallback articles shown when Supabase is unavailable
+const DUMMY_ARTICLES = [
+  {
+    id: 'dummy-1',
+    title: 'Cara Meningkatkan Diamonds TikTok LIVE Secara Konsisten',
+    excerpt: 'Konsistensi adalah kunci utama dalam menghasilkan diamonds yang stabil setiap bulan. Pelajari strategi yang terbukti digunakan oleh creator top Meta Agency.',
+    content: 'Konten lengkap artikel ini tersedia untuk creator yang telah bergabung dengan Meta Agency...',
+    slug: 'cara-meningkatkan-diamonds-tiktok-live',
+    published_at: '2025-07-10T08:00:00+00',
+    view_count: 1240,
+    featured_image: null,
+    category: { name: 'Tips Streaming' },
+    _cardColor: 'from-sky-500 to-blue-600',
+  },
+  {
+    id: 'dummy-2',
+    title: 'Memahami Sistem Grade A, B, C di Meta Agency',
+    excerpt: 'Sistem grading kami dirancang untuk memberikan reward yang adil berdasarkan performa LIVE. Artikel ini menjelaskan cara mencapai Grade A dan memaksimalkan bonus.',
+    content: 'Konten lengkap artikel ini tersedia untuk creator yang telah bergabung dengan Meta Agency...',
+    slug: 'memahami-sistem-grade-meta-agency',
+    published_at: '2025-07-05T08:00:00+00',
+    view_count: 980,
+    featured_image: null,
+    category: { name: 'Bonus Info' },
+    _cardColor: 'from-violet-500 to-purple-600',
+  },
+  {
+    id: 'dummy-3',
+    title: 'Kebijakan Terbaru TikTok LIVE untuk Creator 2025',
+    excerpt: 'TikTok merilis beberapa pembaruan kebijakan yang berdampak langsung pada creator LIVE. Simak ringkasan lengkap dan cara menyesuaikan strategi konten Anda.',
+    content: 'Konten lengkap artikel ini tersedia untuk creator yang telah bergabung dengan Meta Agency...',
+    slug: 'kebijakan-terbaru-tiktok-live-2025',
+    published_at: '2025-06-28T08:00:00+00',
+    view_count: 754,
+    featured_image: null,
+    category: { name: 'Kebijakan TikTok' },
+    _cardColor: 'from-rose-500 to-red-600',
+  },
+  {
+    id: 'dummy-4',
+    title: 'Strategi Jadwal LIVE yang Efektif untuk Mendapatkan Penonton',
+    excerpt: 'Menentukan waktu LIVE yang tepat bisa meningkatkan jumlah penonton hingga 3x lipat. Analisis data dari creator kami menunjukkan pola yang konsisten.',
+    content: 'Konten lengkap artikel ini tersedia untuk creator yang telah bergabung dengan Meta Agency...',
+    slug: 'strategi-jadwal-live-efektif',
+    published_at: '2025-06-20T08:00:00+00',
+    view_count: 612,
+    featured_image: null,
+    category: { name: 'Tips Streaming' },
+    _cardColor: 'from-emerald-500 to-teal-600',
+  },
+  {
+    id: 'dummy-5',
+    title: 'Panduan Lengkap Endorsement untuk Creator TikTok',
+    excerpt: 'Endorsement bisa menjadi sumber pendapatan tambahan yang signifikan. Pelajari cara negosiasi rate yang tepat dan menjaga kepercayaan audiens Anda.',
+    content: 'Konten lengkap artikel ini tersedia untuk creator yang telah bergabung dengan Meta Agency...',
+    slug: 'panduan-endorsement-creator-tiktok',
+    published_at: '2025-06-15T08:00:00+00',
+    view_count: 530,
+    featured_image: null,
+    category: { name: 'Monetization' },
+    _cardColor: 'from-amber-500 to-orange-600',
+  },
+  {
+    id: 'dummy-6',
+    title: 'Cara Membangun Personal Branding yang Kuat di TikTok',
+    excerpt: 'Personal branding yang jelas membuat penonton lebih mudah mengenali dan mengingat Anda. Ikuti langkah-langkah yang telah terbukti dari creator sukses kami.',
+    content: 'Konten lengkap artikel ini tersedia untuk creator yang telah bergabung dengan Meta Agency...',
+    slug: 'cara-membangun-personal-branding-tiktok',
+    published_at: '2025-06-08T08:00:00+00',
+    view_count: 489,
+    featured_image: null,
+    category: { name: 'Growth Strategy' },
+    _cardColor: 'from-cyan-500 to-sky-600',
+  },
+];
+
 const ArticlesEnhanced = () => {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,7 +93,7 @@ const ArticlesEnhanced = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [bookmarkedArticles, setBookmarkedArticles] = useState([]);
   const { theme } = useThemeStore();
-  
+
   const articlesPerPage = 9;
 
   // Load bookmarks from localStorage
@@ -32,11 +108,15 @@ const ArticlesEnhanced = () => {
     const fetchArticles = async () => {
       setLoading(true);
       setError(null);
-      const { data, error } = await getArticles();
-      if (error) {
-        setError(error.message);
-      } else {
-        setArticles(data || []);
+      try {
+        const { data, error } = await getArticles();
+        if (error || !data || data.length === 0) {
+          setArticles(DUMMY_ARTICLES);
+        } else {
+          setArticles(data);
+        }
+      } catch {
+        setArticles(DUMMY_ARTICLES);
       }
       setLoading(false);
     };
@@ -132,9 +212,11 @@ const ArticlesEnhanced = () => {
           transition={{ duration: 0.5 }}
           className="text-center mb-12"
         >
-          <h1 className="text-4xl font-bold mb-4">Articles & Insights</h1>
-          <p className="text-lg text-meta-gray-600 dark:text-meta-gray-400 mb-8">
-            Discover insights, tips, and strategies for content creators
+          <h1 className={`text-4xl font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-meta-black'}`}>
+            Artikel & Panduan
+          </h1>
+          <p className="text-base text-meta-gray-600 dark:text-meta-gray-400 mb-8 max-w-xl mx-auto">
+            Tips, strategi, dan informasi terbaru untuk creator TikTok bersama Meta Agency.
           </p>
         </motion.div>
 
@@ -313,18 +395,18 @@ const ArticlesEnhanced = () => {
                       theme === 'dark' ? 'bg-meta-gray-900' : 'bg-white'
                     }`}
                   >
-                    {/* Article Image Placeholder */}
-                    <div className="relative h-48 bg-gradient-to-br from-meta-blue to-cyan-500">
+                    {/* Article Image */}
+                    <div className={`relative h-44 bg-gradient-to-br ${article._cardColor || 'from-slate-500 to-slate-700'}`}>
                       {article.featured_image ? (
-                        <img 
-                          src={article.featured_image} 
+                        <img
+                          src={article.featured_image}
                           alt={article.title}
                           className="w-full h-full object-cover"
                           loading="lazy"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <BookOpen className="w-12 h-12 text-white/80" />
+                          <BookOpen className="w-10 h-10 text-white/70" />
                         </div>
                       )}
                       
@@ -444,8 +526,8 @@ const ArticlesEnhanced = () => {
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 ) : (
-                  <p className="text-meta-gray-500 dark:text-meta-gray-400">
-                    You've reached the end! 🎉
+                  <p className="text-meta-gray-500 dark:text-meta-gray-400 text-sm">
+                    Semua artikel telah ditampilkan.
                   </p>
                 )}
                 

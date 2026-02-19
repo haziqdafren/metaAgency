@@ -44,8 +44,6 @@ const Privacy = lazyLoad(() => import('./pages/public/Privacy'));
 const Terms = lazyLoad(() => import('./pages/public/Terms'));
 const Disclaimer = lazyLoad(() => import('./pages/public/Disclaimer'));
 const LoginPage = lazyLoad(() => import('./pages/auth/LoginPage'));
-const BulletproofLogin = lazyLoad(() => import('./pages/auth/BulletproofLogin'));
-const AuthTest = lazyLoad(() => import('./pages/AuthTest'));
 const NotFound = lazyLoad(() => import('./pages/public/NotFound'));
 const BonusContent = lazyLoad(() => import('./pages/public/BonusContentEnhanced'));
 const ArticleDetail = lazyLoad(() => import('./pages/public/ArticleDetail'));
@@ -118,18 +116,8 @@ function ScrollToTop() {
 function ProtectedRoute({ children, requiredRole }) {
   const { user, profile, loading } = useAuthStore();
   
-  // Add extra logging for debugging
-  console.log('🛡️ ProtectedRoute check:', { 
-    user: !!user, 
-    profile: profile?.role, 
-    loading, 
-    requiredRole,
-    timestamp: new Date().toISOString()
-  });
-  
   // Show loading spinner while auth is initializing
   if (loading) {
-    console.log('⏳ Auth loading, showing spinner...');
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center space-y-4">
@@ -140,15 +128,11 @@ function ProtectedRoute({ children, requiredRole }) {
     );
   }
   
-  // Check if user exists
   if (!user) {
-    console.log('🚫 No user found, redirecting to login...');
     return <Navigate to="/login" replace />;
   }
 
-  // Check if profile is required and exists
   if (!profile) {
-    console.log('⚠️ No profile found, waiting for profile fetch...');
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center space-y-4">
@@ -159,9 +143,7 @@ function ProtectedRoute({ children, requiredRole }) {
     );
   }
 
-  // Check role requirements
   if (requiredRole && profile.role !== requiredRole) {
-    console.log('⚠️ Insufficient role, redirecting...', { required: requiredRole, actual: profile.role });
     if (profile.role === 'admin') {
       return <Navigate to="/admin" replace />;
     } else if (profile.role === 'talent') {
@@ -171,7 +153,6 @@ function ProtectedRoute({ children, requiredRole }) {
     }
   }
 
-  console.log('✅ Access granted for role:', profile?.role);
   return children;
 }
 
@@ -277,16 +258,6 @@ function AppRoutes() {
             <Route path="/terms" element={<Terms />} />
             <Route path="/disclaimer" element={<Disclaimer />} />
             <Route path="/login" element={
-              <ErrorBoundary>
-                <LoginPage />
-              </ErrorBoundary>
-            } />
-            <Route path="/auth-test" element={
-              <ErrorBoundary>
-                <AuthTest />
-              </ErrorBoundary>
-            } />
-            <Route path="/old-login" element={
               <ErrorBoundary>
                 <LoginPage />
               </ErrorBoundary>

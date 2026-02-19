@@ -386,6 +386,43 @@ const LoginPage = () => {
                 Protected by Meta Agency Security
               </p>
             </motion.div>
+
+            {/* Demo Credentials */}
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 1.1 }}
+              className={`rounded-xl border p-4 ${
+                theme === 'dark'
+                  ? 'bg-meta-blue/5 border-meta-blue/20'
+                  : 'bg-blue-50 border-blue-100'
+              }`}
+            >
+              <p className={`text-xs font-semibold mb-2 ${
+                theme === 'dark' ? 'text-meta-gray-400' : 'text-meta-gray-500'
+              }`}>
+                Demo Credentials
+              </p>
+              <button
+                type="button"
+                onClick={() => setFormData(prev => ({
+                  ...prev,
+                  email: 'admin@metaagency.id',
+                  password: 'admin123'
+                }))}
+                className={`w-full text-left text-xs font-mono rounded-lg px-3 py-2 transition-colors ${
+                  theme === 'dark'
+                    ? 'bg-white/5 hover:bg-white/10 text-meta-gray-300'
+                    : 'bg-white hover:bg-gray-50 text-meta-gray-700 border border-gray-200'
+                }`}
+              >
+                <span className={`block ${theme === 'dark' ? 'text-meta-gray-500' : 'text-meta-gray-400'}`}>Email</span>
+                admin@metaagency.id
+                <span className={`block mt-1 ${theme === 'dark' ? 'text-meta-gray-500' : 'text-meta-gray-400'}`}>Password</span>
+                admin123
+                <span className={`block mt-1.5 text-meta-blue`}>Click to auto-fill →</span>
+              </button>
+            </motion.div>
           </motion.form>
         </motion.div>
       </div>

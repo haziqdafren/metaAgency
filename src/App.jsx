@@ -12,9 +12,7 @@ function App() {
   const { theme } = useThemeStore();
   const { initialize, loading } = useAuthStore();
   
-  // Initialize auth state on app start
   useEffect(() => {
-    console.log('🚀 App starting - initializing auth state...');
     initialize();
   }, [initialize]);
   

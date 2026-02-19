@@ -9,7 +9,8 @@ const TestimonialsSection = () => {
       name: 'Dwi Sari',
       role: 'Lifestyle Creator',
       followers: '2.5M',
-      image: '👩',
+      initials: 'DS',
+      avatarColor: 'bg-violet-500',
       quote: 'Bergabung dengan Meta Agency adalah keputusan terbaik yang pernah saya buat. Tim mereka membantu saya mengembangkan strategi konten yang tepat dan menghubungkan saya dengan brand-brand ternama.',
       rating: 5,
     },
@@ -17,7 +18,8 @@ const TestimonialsSection = () => {
       name: 'Budi Sutiono',
       role: 'Tech Reviewer',
       followers: '1.8M',
-      image: '👨‍💻',
+      initials: 'BS',
+      avatarColor: 'bg-sky-500',
       quote: 'Meta Agency memberikan dukungan yang luar biasa dalam mengembangkan channel saya. Analisis data mereka sangat membantu dalam memahami audiens dan mengoptimalkan konten.',
       rating: 5,
     },
@@ -25,7 +27,8 @@ const TestimonialsSection = () => {
       name: 'Eka Pramudi',
       role: 'Fashion Influencer',
       followers: '3.2M',
-      image: '👩‍🎤',
+      initials: 'EP',
+      avatarColor: 'bg-rose-500',
       quote: 'Dengan bantuan Meta Agency, saya berhasil meningkatkan engagement dan monetisasi channel saya secara signifikan. Mereka benar-benar memahami kebutuhan creator.',
       rating: 5,
     },
@@ -103,11 +106,11 @@ const TestimonialsSection = () => {
                       className="flex-shrink-0 relative"
                     >
                       <div
-                        className="w-24 h-24 rounded-full border-4 border-meta-blue shadow-lg flex items-center justify-center text-5xl bg-white"
+                        className={`w-20 h-20 rounded-full border-2 border-white/20 shadow-lg flex items-center justify-center text-xl font-bold text-white ${testimonials[currentIndex].avatarColor}`}
                         aria-label={testimonials[currentIndex].name}
                         role="img"
                       >
-                        {testimonials[currentIndex].image}
+                        {testimonials[currentIndex].initials}
                       </div>
                     </motion.div>
                     <div className="flex-1 text-center md:text-left">
