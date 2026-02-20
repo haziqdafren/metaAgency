@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { motion } from 'framer-motion';
 import useThemeStore from '../../store/themeStore';
-import { Helmet } from 'react-helmet';
+import { Helmet } from 'react-helmet-async';
 import { Calendar, Tag, Eye } from 'lucide-react';
 
 const ArticleDetail = () => {
