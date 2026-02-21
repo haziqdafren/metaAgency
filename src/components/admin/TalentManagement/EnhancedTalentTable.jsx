@@ -4,7 +4,10 @@ import EnhancedDataTable from '../EnhancedDataTable';
 import { columnHelpers } from '../DataTableHelpers';
 import Button from '../../common/Button';
 import Notification from '../../common/Notification';
+import ConfirmModal from '../../common/ConfirmModal';
 import { supabase } from '../../../lib/supabase';
+import { useDemoMode } from '../../../contexts/DemoModeContext';
+import { useConfirm } from '../../../hooks/useConfirm';
 
 const EnhancedTalentTable = ({
   data = [],
@@ -15,6 +18,8 @@ const EnhancedTalentTable = ({
   onSelectTalent = null,
   selectedTalent = null
 }) => {
+  const { withDemoCheck } = useDemoMode();
+  const { confirmState, confirm, closeConfirm } = useConfirm();
   // Modal and notification state
   const [showEditModal, setShowEditModal] = useState(false);
   const [notification, setNotification] = useState({ message: '', type: 'info', isVisible: false });
@@ -88,19 +93,34 @@ const EnhancedTalentTable = ({
     setEditLoading(false);
   };
   const handleDelete = async (talent) => {
-    if (!window.confirm(`Delete talent @${talent.username_tiktok}? This cannot be undone.`)) return;
-    setDeleteLoadingId(talent.id);
-    const { error } = await supabase
-      .from('creators')
-      .delete()
-      .eq('id', talent.id);
-    if (!error) {
-      setNotification({ message: 'Talent deleted.', type: 'success', isVisible: true });
-      if (onRefresh) onRefresh();
-    } else {
-      setNotification({ message: 'Failed to delete talent.', type: 'error', isVisible: true });
-    }
-    setDeleteLoadingId(null);
+    // Show modern confirmation modal
+    const confirmed = await confirm({
+      title: 'Delete Talent',
+      message: `Are you sure you want to delete "@${talent.username_tiktok}"? This action cannot be undone.`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger'
+    });
+
+    if (!confirmed) return;
+
+    // Use withDemoCheck to prevent actual deletion in demo mode
+    const performDelete = withDemoCheck(async () => {
+      setDeleteLoadingId(talent.id);
+      const { error } = await supabase
+        .from('creators')
+        .delete()
+        .eq('id', talent.id);
+      if (!error) {
+        setNotification({ message: 'Talent deleted.', type: 'success', isVisible: true });
+        if (onRefresh) onRefresh();
+      } else {
+        setNotification({ message: 'Failed to delete talent.', type: 'error', isVisible: true });
+      }
+      setDeleteLoadingId(null);
+    });
+
+    await performDelete();
   };
   const handleCopyInfo = (talent) => {
     const info = `@${talent.username_tiktok}\nFollowers: ${talent.followers_count}\nCategory: ${talent.konten_kategori}\nGames: ${talent.game_preference}\nStatus: ${talent.status}`;
@@ -241,6 +261,17 @@ const EnhancedTalentTable = ({
   return (
     <div className="relative">
       <Notification {...notification} onClose={() => setNotification({ ...notification, isVisible: false })} />
+      <ConfirmModal
+        isOpen={confirmState.isOpen}
+        onClose={closeConfirm}
+        onConfirm={confirmState.onConfirm}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmText={confirmState.confirmText}
+        cancelText={confirmState.cancelText}
+        type={confirmState.type}
+        loading={confirmState.loading}
+      />
       {renderFilters()}
       {renderEditModal()}
       <EnhancedDataTable

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
+import { useDemoMode } from '../../contexts/DemoModeContext';
 
 const defaultRules = {
   A: { days: 22, hours: 100, bonusPercentage: 30 },
@@ -10,6 +11,7 @@ const defaultRules = {
 };
 
 const BonusRules = () => {
+  const { withDemoCheck } = useDemoMode();
   const [gradeRules, setGradeRules] = useState(defaultRules);
   const [dollarRate, setDollarRate] = useState(16000);
   const [loading, setLoading] = useState(false);
@@ -48,7 +50,7 @@ const BonusRules = () => {
     fetchRules();
   }, []);
 
-  const saveRules = async (e) => {
+  const saveRules = withDemoCheck(async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
@@ -64,18 +66,18 @@ const BonusRules = () => {
         },
         updated_at: new Date().toISOString()
       };
-      
+
       console.log('💾 Saving rules to database:', rulesData);
-      
+
       const { error } = await supabase
         .from('bonus_rules')
-        .upsert(rulesData, { 
+        .upsert(rulesData, {
           onConflict: 'id',
-          ignoreDuplicates: false 
+          ignoreDuplicates: false
         });
-        
+
       if (error) throw error;
-      
+
       setSuccess('Rules saved successfully!');
       setTimeout(() => setSuccess(''), 3000);
       console.log('✅ Rules saved successfully');
@@ -86,7 +88,7 @@ const BonusRules = () => {
     } finally {
       setLoading(false);
     }
-  };
+  });
 
   return (
     <div className="bg-white rounded-xl shadow p-6 w-full flex flex-col gap-6">

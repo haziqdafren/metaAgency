@@ -15,6 +15,7 @@ import SummaryStats from './SummaryStats';
 import ActionButtons from './ActionButtons';
 import CreatorsTable from './CreatorsTable';
 import EnhancedBonusTable from './EnhancedBonusTable';
+import { useDemoMode } from '../../../contexts/DemoModeContext';
 
 Chart.register(CategoryScale, LinearScale, BarElement, Title, ChartTooltip, Legend);
 
@@ -81,6 +82,7 @@ const BonusCalculatorRefactored = ({ onCalculationComplete }) => {
   const [editNotesLoading, setEditNotesLoading] = useState(false);
 
   const { profile } = useAuthStore();
+  const { withDemoCheck } = useDemoMode();
   const selectAllRef = useRef();
 
   // Memoized computations
@@ -247,12 +249,12 @@ const BonusCalculatorRefactored = ({ onCalculationComplete }) => {
   }, [calculateBonuses, calculateSummary]);
 
   // Action handlers
-  const handleSaveToDatabase = useCallback(async () => {
+  const handleSaveToDatabase = withDemoCheck(useCallback(async () => {
     if (eligibleCreators.length === 0) {
       setSaveError('No eligible creators to save.');
       return;
     }
-    
+
     setSaveLoading(true);
     setSaveError('');
     setSaveSuccess('');
@@ -349,7 +351,7 @@ const BonusCalculatorRefactored = ({ onCalculationComplete }) => {
       setSaveProgress({ current: 0, total: 0 });
       setAdminNotes('');
     }
-  }, [eligibleCreators, selectedMonth, selectedYear, gradeRequirements, summary, adminNotes, profile]);
+  }, [eligibleCreators, selectedMonth, selectedYear, gradeRequirements, summary, adminNotes, profile]));
 
   const handleResetSave = useCallback(() => {
     setIsSaved(false);
@@ -441,54 +443,58 @@ const BonusCalculatorRefactored = ({ onCalculationComplete }) => {
   const handleStatusChange = useCallback(async (creatorId, status) => {
     const creator = eligibleCreators.find((c) => c.creatorId === creatorId);
     if (!creator || creator.paymentStatus === status) return;
-    
-    setEligibleCreators((prev) =>
-      prev.map((c) =>
-        c.creatorId === creatorId ? { ...c, paymentStatus: status } : c
-      )
-    );
-    setHighlightedRows((prev) => [...prev, creatorId]);
-    setTimeout(() => setHighlightedRows((prev) => prev.filter(id => id !== creatorId)), 1200);
-    
-    // Update in database
-    try {
-      const { data: dbCreator } = await supabase
-        .from('creators')
-        .select('id')
-        .eq('creator_id', creator.creatorId)
-        .single();
-      
-      if (dbCreator) {
-        await supabase
-          .from('bonus_calculations')
-          .update({ payment_status: status })
-          .eq('creator_id', dbCreator.id)
-          .eq('month', selectedMonth)
-          .eq('year', selectedYear);
+
+    const performStatusChange = withDemoCheck(async () => {
+      setEligibleCreators((prev) =>
+        prev.map((c) =>
+          c.creatorId === creatorId ? { ...c, paymentStatus: status } : c
+        )
+      );
+      setHighlightedRows((prev) => [...prev, creatorId]);
+      setTimeout(() => setHighlightedRows((prev) => prev.filter(id => id !== creatorId)), 1200);
+
+      // Update in database
+      try {
+        const { data: dbCreator } = await supabase
+          .from('creators')
+          .select('id')
+          .eq('creator_id', creator.creatorId)
+          .single();
+
+        if (dbCreator) {
+          await supabase
+            .from('bonus_calculations')
+            .update({ payment_status: status })
+            .eq('creator_id', dbCreator.id)
+            .eq('month', selectedMonth)
+            .eq('year', selectedYear);
+        }
+      } catch (error) {
+        console.error('Error updating status:', error);
       }
-    } catch (error) {
-      console.error('Error updating status:', error);
-    }
-  }, [eligibleCreators, selectedMonth, selectedYear]);
+    });
+
+    await performStatusChange();
+  }, [eligibleCreators, selectedMonth, selectedYear, withDemoCheck]);
 
   const handleBulkStatusUpdate = useCallback((status) => {
     setPendingBulkStatus(status);
     setShowConfirm(true);
   }, []);
 
-  const confirmBulkStatusUpdate = useCallback(async () => {
+  const confirmBulkStatusUpdate = withDemoCheck(useCallback(async () => {
     setShowConfirm(false);
     setStatusLoading(true);
-    
+
     for (const creator of eligibleCreators) {
       if (selectedRows.includes(creator.creatorId) && creator.paymentStatus !== pendingBulkStatus) {
         await handleStatusChange(creator.creatorId, pendingBulkStatus);
       }
     }
-    
+
     setSelectedRows([]);
     setStatusLoading(false);
-  }, [eligibleCreators, selectedRows, pendingBulkStatus, handleStatusChange]);
+  }, [eligibleCreators, selectedRows, pendingBulkStatus, handleStatusChange]));
 
   const cancelBulkStatusUpdate = useCallback(() => {
     setShowConfirm(false);

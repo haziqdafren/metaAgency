@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import Notification from '../../components/common/Notification';
+import ConfirmModal from '../../components/common/ConfirmModal';
 import { AnimatePresence } from 'framer-motion';
 import EnhancedArticlesTable from '../../components/admin/EnhancedArticlesTable';
 import SimpleArticleForm from '../../components/admin/SimpleArticleForm';
 import CompactCard from '../../components/admin/CompactCard';
+import { useDemoMode } from '../../contexts/DemoModeContext';
+import { useConfirm } from '../../hooks/useConfirm';
 // Removed generateUniqueSlug import - now handled in SimpleArticleForm
 
 const AdminArticles = () => {
+  const { withDemoCheck } = useDemoMode();
+  const { confirmState, confirm, closeConfirm } = useConfirm();
   const [articles, setArticles] = useState([]);
   const [categories, setCategories] = useState([]);
   // Categories are now handled in EnhancedArticleForm
@@ -93,20 +98,33 @@ const AdminArticles = () => {
     setShowForm(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this article?')) return;
-    setLoading(true);
-    const { error } = await supabase.from('articles').delete().eq('id', id);
-    if (error) setNotification({ message: error.message, type: 'error', isVisible: true });
-    else {
-      setNotification({ message: 'Article deleted.', type: 'success', isVisible: true });
-      fetchArticles();
-    }
-    setLoading(false);
+  const handleDelete = async (article) => {
+    const confirmed = await confirm({
+      title: 'Delete Article',
+      message: `Are you sure you want to delete "${article.title}"? This action cannot be undone.`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger'
+    });
+
+    if (!confirmed) return;
+
+    const performDelete = withDemoCheck(async () => {
+      setLoading(true);
+      const { error } = await supabase.from('articles').delete().eq('id', article.id);
+      if (error) setNotification({ message: error.message, type: 'error', isVisible: true });
+      else {
+        setNotification({ message: 'Article deleted.', type: 'success', isVisible: true });
+        fetchArticles();
+      }
+      setLoading(false);
+    });
+
+    await performDelete();
   };
 
   // Handler for bulk actions from Enhanced DataTable
-  const handleBulkAction = async (action, selectedData, selectedIds) => {
+  const handleBulkAction = withDemoCheck(async (action, selectedData, selectedIds) => {
     switch(action) {
       case 'publish':
         setLoading(true);
@@ -163,26 +181,28 @@ const AdminArticles = () => {
         break;
         
       case 'delete':
+        // Delete action will be handled with confirmation in the component that calls this
+        // This is a placeholder - actual confirmation should happen before calling handleBulkAction
         setLoading(true);
         try {
           const { error } = await supabase
             .from('articles')
             .delete()
             .in('id', selectedIds);
-          
+
           if (error) throw error;
-          
-          setNotification({ 
-            message: `Deleted ${selectedIds.length} articles`, 
-            type: 'success', 
-            isVisible: true 
+
+          setNotification({
+            message: `Deleted ${selectedIds.length} articles`,
+            type: 'success',
+            isVisible: true
           });
           fetchArticles();
         } catch (error) {
-          setNotification({ 
-            message: 'Error deleting articles: ' + error.message, 
-            type: 'error', 
-            isVisible: true 
+          setNotification({
+            message: 'Error deleting articles: ' + error.message,
+            type: 'error',
+            isVisible: true
           });
         } finally {
           setLoading(false);
@@ -192,9 +212,9 @@ const AdminArticles = () => {
       default:
         console.log('Unknown bulk action:', action);
     }
-  };
+  });
 
-  const handleFormSave = async (formData) => {
+  const handleFormSave = withDemoCheck(async (formData) => {
     setFormLoading(true);
     
     try {
@@ -249,14 +269,27 @@ const AdminArticles = () => {
     } finally {
       setFormLoading(false);
     }
-  };
+  });
 
   // Editor logic moved to EnhancedArticleForm component
 
   return (
     <div className="p-6 max-w-7xl mx-auto transition-colors duration-500">
       <Notification {...notification} onClose={() => setNotification({ ...notification, isVisible: false })} />
-      
+
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmState.isOpen}
+        onClose={closeConfirm}
+        onConfirm={confirmState.onConfirm}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmText={confirmState.confirmText}
+        cancelText={confirmState.cancelText}
+        type={confirmState.type}
+        loading={confirmState.loading}
+      />
+
       {/* Enhanced Articles Table */}
       <CompactCard 
         title="Articles Management"

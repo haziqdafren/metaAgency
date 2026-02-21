@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { NotificationProvider } from './context/NotificationContext';
+import { DemoModeProvider } from './contexts/DemoModeContext';
 import ScrollToTop from './components/common/ScrollToTop';
 import CustomCursor from './components/common/CustomCursor';
 import ThemeProvider from './components/common/ThemeProvider';
@@ -40,9 +41,11 @@ function App() {
     <Router>
       <ThemeProvider>
         <NotificationProvider>
-          <AppRoutes />
-          <ScrollToTop />
-          <CustomCursor />
+          <DemoModeProvider>
+            <AppRoutes />
+            <ScrollToTop />
+            <CustomCursor />
+          </DemoModeProvider>
         </NotificationProvider>
       </ThemeProvider>
     </Router>

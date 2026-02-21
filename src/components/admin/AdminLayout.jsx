@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronUp, Home, ArrowLeft } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/authStore';
+import DemoBanner from '../common/DemoBanner';
+import { isDemoMode } from '../../utils/demoMode';
 
 const AdminLayout = ({ children, title, showBackButton = false, compact = false }) => {
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -100,10 +102,15 @@ const AdminLayout = ({ children, title, showBackButton = false, compact = false 
     return breadcrumbs;
   };
 
+  const isDemo = isDemoMode(profile);
+
   return (
     <div className={`min-h-screen bg-gray-50 ${compact ? 'p-3' : 'p-4'}`}>
+      {/* Demo Mode Banner */}
+      {isDemo && <DemoBanner />}
+
       {/* Header with Breadcrumbs */}
-      <div className="mb-4">
+      <div className={`${isDemo ? 'mt-4' : ''} mb-4`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             {showBackButton && (

@@ -4,10 +4,12 @@ import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 import Loading from '../../components/common/Loading';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useDemoMode } from '../../contexts/DemoModeContext';
 
 const pageSize = 10;
 
 const BonusHistory = () => {
+  const { withDemoCheck } = useDemoMode();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -86,7 +88,7 @@ const BonusHistory = () => {
     }));
   };
 
-  const saveChanges = async (rowId) => {
+  const saveChanges = withDemoCheck(async (rowId) => {
     const editData = editingData[rowId];
     if (!editData) return;
 
@@ -107,8 +109,8 @@ const BonusHistory = () => {
       if (error) throw error;
 
       // Update local state optimistically
-      setHistory(prev => prev.map(item => 
-        item.id === rowId 
+      setHistory(prev => prev.map(item =>
+        item.id === rowId
           ? {
               ...item,
               payment_status: editData.payment_status,
@@ -132,7 +134,7 @@ const BonusHistory = () => {
         return newSet;
       });
     }
-  };
+  });
 
   // Helper function to get week number from date
   const getWeekNumber = (date) => {
